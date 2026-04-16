@@ -101,6 +101,21 @@ CREATE POLICY "anon_insert_cell_groups" ON cell_groups FOR INSERT WITH CHECK (tr
 CREATE POLICY "anon_update_cell_groups" ON cell_groups FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "anon_delete_cell_groups" ON cell_groups FOR DELETE USING (true);
 
+-- ─── MEMBER_ATTENDANCE ───────────────────────────────
+DROP POLICY IF EXISTS "Allow authenticated users to read member_attendance"   ON member_attendance;
+DROP POLICY IF EXISTS "Allow authenticated users to insert member_attendance"  ON member_attendance;
+DROP POLICY IF EXISTS "Allow authenticated users to update member_attendance"  ON member_attendance;
+DROP POLICY IF EXISTS "Allow authenticated users to delete member_attendance"  ON member_attendance;
+DROP POLICY IF EXISTS "anon_read_member_attendance"   ON member_attendance;
+DROP POLICY IF EXISTS "anon_insert_member_attendance" ON member_attendance;
+DROP POLICY IF EXISTS "anon_update_member_attendance" ON member_attendance;
+DROP POLICY IF EXISTS "anon_delete_member_attendance" ON member_attendance;
+
+CREATE POLICY "anon_read_member_attendance"   ON member_attendance FOR SELECT USING (true);
+CREATE POLICY "anon_insert_member_attendance" ON member_attendance FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_update_member_attendance" ON member_attendance FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "anon_delete_member_attendance" ON member_attendance FOR DELETE USING (true);
+
 -- ─── VERIFY ──────────────────────────────────────────
 SELECT
   tablename,
@@ -108,5 +123,5 @@ SELECT
   cmd,
   qual
 FROM pg_policies
-WHERE tablename IN ('events','attendance','giving_transactions','members','ministries','cell_groups')
+WHERE tablename IN ('events','attendance','giving_transactions','members','ministries','cell_groups','member_attendance')
 ORDER BY tablename, cmd;

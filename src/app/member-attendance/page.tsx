@@ -119,8 +119,11 @@ export default function MemberAttendancePage() {
       setLoadingSummaries(true);
       const data = await fetchFrontendMemberAttendanceSummaries();
       setSummaries(data);
-    } catch {
-      toast.error('Failed to load attendance summaries');
+    } catch (err: any) {
+      console.error('loadSummaries error:', err);
+      toast.error('Failed to load members', {
+        description: err?.message ?? 'Check the browser console for details',
+      });
     } finally {
       setLoadingSummaries(false);
     }
@@ -168,8 +171,11 @@ export default function MemberAttendancePage() {
         dateTo: historyDateTo || undefined,
       });
       setHistoryRecords(records);
-    } catch {
-      toast.error('Failed to load attendance history');
+    } catch (err: any) {
+      console.error('loadHistory error:', err?.message, err?.details, err?.hint, err);
+      toast.error('Failed to load attendance history', {
+        description: err?.message ?? 'Check the browser console for details',
+      });
     } finally {
       setLoadingHistory(false);
     }
@@ -190,13 +196,11 @@ export default function MemberAttendancePage() {
   };
 
   const saveSession = async () => {
-    const recordedBy = useSupabaseAuth ? (session?.user?.email || session?.user?.id || 'Admin') : 'Admin';
     const records = allMembers.map(m => ({
       memberId: m.id,
       date: sessionDate,
       service: sessionService,
       present: sessionAttendance[m.id] ?? false,
-      recordedBy,
     }));
 
     try {
@@ -690,12 +694,12 @@ export default function MemberAttendancePage() {
                       <th className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-600 py-3 px-3">Date</th>
                       <th className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-600 py-3 px-3">Service</th>
                       <th className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-600 py-3 px-3">Status</th>
-                      <th className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-600 py-3 px-4 hidden md:table-cell">Recorded By</th>
+                      <th className="text-left text-[11px] font-bold uppercase tracking-wider text-gray-600 py-3 px-4 hidden md:table-cell">Checked In At</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredHistory.map(r => (
-                      <tr key={r.id} className="hover:bg-blue-50/40 transition-colors">
+                      <tr key={`${r.sessionId}-${r.memberId}`} className="hover:bg-blue-50/40 transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <img
@@ -711,8 +715,8 @@ export default function MemberAttendancePage() {
                         </td>
                         <td className="px-3 py-3 font-mono text-[12px] text-gray-600">{r.date}</td>
                         <td className="px-3 py-3">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border ${SERVICE_COLORS[r.service]}`}>
-                            {SERVICE_ICONS[r.service]} {r.service}
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold border ${SERVICE_COLORS[r.service as ServiceType] ?? 'bg-gray-100 text-gray-700 border-gray-300'}`}>
+                            {SERVICE_ICONS[r.service as ServiceType] ?? '📋'} {r.service}
                           </span>
                         </td>
                         <td className="px-3 py-3">
@@ -727,7 +731,7 @@ export default function MemberAttendancePage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-[12px] text-muted-foreground hidden md:table-cell">
-                          {r.recordedBy ?? '—'}
+                          {r.checkedInAt ? new Date(r.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                         </td>
                       </tr>
                     ))}

@@ -1,8 +1,8 @@
 /**
  * Member Attendance Adapter
  *
- * Transforms between the database layer and frontend format for
- * per-member attendance tracking.
+ * Transforms between the DB layer (attendance_sessions + attendance_records)
+ * and the frontend camelCase format.
  */
 
 import {
@@ -14,20 +14,19 @@ import {
   fetchMemberAttendanceSummaries,
   type MemberAttendanceWithDetails,
   type MemberAttendanceSummary,
+  type ServiceType,
 } from './supabase/memberAttendance';
-import type { ServiceType } from './supabase/attendance';
 
 export type { ServiceType };
 
 export interface FrontendMemberAttendance {
-  id: string;
+  sessionId: string;
   memberId: string;
-  attendanceId?: string | null;
   date: string;
-  service: ServiceType;
+  service: string;
   present: boolean;
-  notes?: string;
-  recordedBy?: string;
+  notes?: string | null;
+  checkedInAt?: string | null;
   // Joined member fields
   fullName: string;
   memberCode: string;
@@ -50,14 +49,13 @@ export interface FrontendMemberAttendanceSummary {
 
 function toFrontend(db: MemberAttendanceWithDetails): FrontendMemberAttendance {
   return {
-    id: db.id,
+    sessionId: db.session_id,
     memberId: db.member_id,
-    attendanceId: db.attendance_id,
     date: db.date,
     service: db.service,
     present: db.present,
     notes: db.notes,
-    recordedBy: db.recorded_by,
+    checkedInAt: db.checked_in_at,
     fullName: db.full_name,
     memberCode: db.member_code,
     photoUrl: db.photo_url,
@@ -80,7 +78,6 @@ function summaryToFrontend(db: MemberAttendanceSummary): FrontendMemberAttendanc
   };
 }
 
-// Fetch all member attendance records with optional filters
 export async function fetchFrontendMemberAttendance(
   filters: { memberId?: string; dateFrom?: string; dateTo?: string; service?: ServiceType } = {}
 ): Promise<FrontendMemberAttendance[]> {
@@ -88,7 +85,6 @@ export async function fetchFrontendMemberAttendance(
   return records.map(toFrontend);
 }
 
-// Fetch all records for a specific session (date + service)
 export async function fetchFrontendSessionAttendance(
   date: string,
   service: ServiceType
@@ -97,44 +93,49 @@ export async function fetchFrontendSessionAttendance(
   return records.map(toFrontend);
 }
 
-// Save (upsert) a single member attendance record
-export async function saveFrontendMemberAttendance(
-  record: Omit<FrontendMemberAttendance, 'id' | 'fullName' | 'memberCode' | 'photoUrl' | 'gender' | 'memberStatus'>
-): Promise<void> {
+export async function saveFrontendMemberAttendance(record: {
+  memberId: string;
+  date: string;
+  service: string;
+  present: boolean;
+  notes?: string | null;
+}): Promise<void> {
   await upsertMemberAttendance({
     member_id: record.memberId,
-    attendance_id: record.attendanceId ?? null,
     date: record.date,
     service: record.service,
     present: record.present,
     notes: record.notes,
-    recorded_by: record.recordedBy,
   });
 }
 
-// Bulk save attendance for a whole session
 export async function bulkSaveFrontendMemberAttendance(
-  records: Omit<FrontendMemberAttendance, 'id' | 'fullName' | 'memberCode' | 'photoUrl' | 'gender' | 'memberStatus'>[]
+  records: {
+    memberId: string;
+    date: string;
+    service: string;
+    present: boolean;
+    notes?: string | null;
+  }[]
 ): Promise<void> {
   await bulkUpsertMemberAttendance(
     records.map(r => ({
       member_id: r.memberId,
-      attendance_id: r.attendanceId ?? null,
       date: r.date,
       service: r.service,
       present: r.present,
       notes: r.notes,
-      recorded_by: r.recordedBy,
     }))
   );
 }
 
-// Delete a member attendance record
-export async function deleteFrontendMemberAttendance(id: string): Promise<void> {
-  await deleteMemberAttendanceRecord(id);
+export async function deleteFrontendMemberAttendance(
+  sessionId: string,
+  memberId: string
+): Promise<void> {
+  await deleteMemberAttendanceRecord(sessionId, memberId);
 }
 
-// Get per-member attendance summary (rate, total sessions, last attended)
 export async function fetchFrontendMemberAttendanceSummaries(): Promise<FrontendMemberAttendanceSummary[]> {
   const summaries = await fetchMemberAttendanceSummaries();
   return summaries.map(summaryToFrontend);
