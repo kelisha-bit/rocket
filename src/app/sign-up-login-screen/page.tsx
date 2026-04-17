@@ -1,7 +1,12 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import LoginForm from './components/LoginForm';
+import SignUpForm from './components/SignUpForm';
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
+
   return (
     <div className="min-h-screen flex">
       {/* Left brand panel */}
@@ -54,7 +59,11 @@ export default function LoginPage() {
       </div>
       {/* Right form panel */}
       <div className="flex-1 flex items-center justify-center bg-background p-6 lg:p-12">
-        <LoginForm />
+        {mode === 'login' ? (
+          <LoginForm onSwitchToSignUp={() => setMode('signup')} />
+        ) : (
+          <SignUpForm onSwitchToLogin={() => setMode('login')} />
+        )}
       </div>
     </div>
   );

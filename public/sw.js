@@ -2,24 +2,14 @@ const CACHE_NAME = 'greaterworks-v1.0.0';
 const STATIC_CACHE_NAME = 'greaterworks-static-v1.0.0';
 const DYNAMIC_CACHE_NAME = 'greaterworks-dynamic-v1.0.0';
 
-// Assets to cache on install
+// Assets to cache on install — only truly static files that always return 200.
+// Pages like /dashboard are NOT precached (they may require auth / redirect).
+// They get cached dynamically when the user visits them (stale-while-revalidate).
 const STATIC_ASSETS = [
-  '/',
-  '/dashboard',
-  '/member-management',
-  '/attendance',
-  '/reports',
-  '/finance',
-  '/events',
   '/offline',
   '/manifest.json',
-  // Add critical CSS and JS files
-  '/_next/static/css/app/layout.css',
-  '/_next/static/chunks/webpack.js',
-  '/_next/static/chunks/main.js',
-  // Icons
   '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icons/icon-512x512.png',
 ];
 
 // Network-first resources (always try network first)
@@ -37,22 +27,25 @@ const CACHE_FIRST = [
   '/screenshots/'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets individually (tolerates failures)
 self.addEventListener('install', (event) => {
   console.log('Service Worker: Installing...');
-  
+
   event.waitUntil(
     caches.open(STATIC_CACHE_NAME)
       .then((cache) => {
-        console.log('Service Worker: Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        // Cache each asset individually so one failure doesn't break the whole install
+        return Promise.allSettled(
+          STATIC_ASSETS.map((url) =>
+            cache.add(url).catch((err) => {
+              console.warn('SW: could not cache', url, err.message);
+            })
+          )
+        );
       })
       .then(() => {
-        console.log('Service Worker: Static assets cached');
+        console.log('Service Worker: Static assets cached (best-effort)');
         return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error('Service Worker: Error caching static assets', error);
       })
   );
 });

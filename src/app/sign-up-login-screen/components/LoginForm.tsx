@@ -22,7 +22,11 @@ interface FormValues {
   rememberMe: boolean;
 }
 
-export default function LoginForm() {
+interface LoginFormProps {
+  onSwitchToSignUp?: () => void;
+}
+
+export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -219,9 +223,19 @@ export default function LoginForm() {
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground mt-6">
-        Need help accessing your account?{' '}
-        <span className="text-primary cursor-pointer hover:underline">Contact church admin</span>
+      <p className="text-center text-sm text-muted-foreground mt-6">
+        Don&apos;t have an account?{' '}
+        {onSwitchToSignUp ? (
+          <button
+            type="button"
+            onClick={onSwitchToSignUp}
+            className="text-primary font-medium hover:underline"
+          >
+            Create one
+          </button>
+        ) : (
+          <span className="text-primary cursor-pointer hover:underline">Contact church admin</span>
+        )}
       </p>
     </div>
   );

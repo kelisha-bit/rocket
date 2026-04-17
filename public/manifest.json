@@ -1,8 +1,9 @@
 {
+  "id": "/?source=pwa",
   "name": "GreaterWorks Church Management System",
   "short_name": "GreaterWorks",
   "description": "Comprehensive church management system for Greater Works City Church, Accra",
-  "start_url": "/dashboard",
+  "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1B4F8A",
@@ -10,22 +11,6 @@
   "scope": "/",
   "lang": "en",
   "categories": ["productivity", "business", "utilities"],
-  "screenshots": [
-    {
-      "src": "/screenshots/desktop-dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Dashboard view on desktop"
-    },
-    {
-      "src": "/screenshots/mobile-dashboard.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Dashboard view on mobile"
-    }
-  ],
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
