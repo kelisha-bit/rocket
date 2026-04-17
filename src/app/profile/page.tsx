@@ -7,6 +7,7 @@ import { User, Mail, Phone, MapPin, Calendar, Camera, Save, X, Edit2 } from 'luc
 import AppImage from '@/components/ui/AppImage';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { fetchMemberMinistries } from '@/lib/supabase/ministries';
 import ProfileStats from './components/ProfileStats';
 import MinistryInvolvement from './components/MinistryInvolvement';
 import ActivityTimeline from './components/ActivityTimeline';
@@ -35,6 +36,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [ministriesCount, setMinistriesCount] = useState(0);
 
   useEffect(() => {
     // Always load profile when component mounts
@@ -105,6 +107,14 @@ export default function ProfilePage() {
 
       setProfile(userProfile);
       setFormData(userProfile);
+
+      // Fetch real ministry count for this user
+      try {
+        const memberMinistries = await fetchMemberMinistries(user.id);
+        setMinistriesCount(memberMinistries.length);
+      } catch {
+        // fallback: count stays 0
+      }
     } catch (error) {
       console.error('Error loading profile:', error);
       toast.error('Failed to load profile');
@@ -203,9 +213,9 @@ export default function ProfilePage() {
         {/* Profile Stats */}
         <ProfileStats
           memberSince={profile.created_at || '2020-01-01'}
-          attendanceRate={92}
-          totalGiving={18450}
-          ministriesCount={3}
+          attendanceRate={0}
+          totalGiving={0}
+          ministriesCount={ministriesCount}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -454,7 +464,7 @@ export default function ProfilePage() {
 
           {/* Right Column - Additional Info */}
           <div className="space-y-6">
-            <MinistryInvolvement />
+            <MinistryInvolvement userId={profile.id} />
             <ActivityTimeline />
             <QuickActions
               onSignOut={async () => {

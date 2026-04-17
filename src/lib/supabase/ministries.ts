@@ -177,6 +177,26 @@ export async function fetchMinistryMemberIds(ministryId: string): Promise<string
   return data ? data.map((r: { member_id: string }) => r.member_id) : [];
 }
 
+// Fetch ministries for a specific member (via member_ministries junction table)
+export async function fetchMemberMinistries(memberId: string): Promise<Ministry[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('member_ministries')
+    .select('ministry_id, ministries(*)')
+    .eq('member_id', memberId);
+
+  if (error) {
+    console.error('Error fetching member ministries:', error);
+    throw error;
+  }
+
+  if (!data || data.length === 0) return [];
+
+  return data
+    .filter((r: any) => r.ministries)
+    .map((r: any) => transformMinistry(r.ministries));
+}
+
 // Search ministries by name or location
 export async function searchMinistries(query: string): Promise<Ministry[]> {
   const supabase = createClient();
