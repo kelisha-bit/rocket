@@ -295,3 +295,20 @@ export async function searchMembers(query: string): Promise<Member[]> {
 
   return data ? data.map(transformMember) : [];
 }
+
+// Find member by email - useful for linking user accounts to member records
+export async function fetchMemberByEmail(email: string): Promise<Member | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching member by email:', error);
+    return null;
+  }
+
+  return data ? transformMember(data) : null;
+}

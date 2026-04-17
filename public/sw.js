@@ -110,50 +110,64 @@ self.addEventListener('fetch', (event) => {
 async function networkFirst(request) {
   try {
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse.ok) {
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
-    console.log('Network failed, trying cache:', error);
+    console.log('Network failed, trying cache:', error?.message || error);
     const cachedResponse = await caches.match(request);
-    
+
     if (cachedResponse) {
       return cachedResponse;
     }
-    
+
     // Return offline page for navigation requests
     if (request.mode === 'navigate') {
-      return caches.match('/offline');
+      const offlineResponse = await caches.match('/offline');
+      if (offlineResponse) {
+        return offlineResponse;
+      }
     }
-    
-    throw error;
+
+    // Return a synthetic error response instead of throwing
+    return new Response('Network error', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 }
 
 // Cache-first strategy
 async function cacheFirst(request) {
-  const cachedResponse = await caches.match(request);
-  
-  if (cachedResponse) {
-    return cachedResponse;
-  }
-  
   try {
+    const cachedResponse = await caches.match(request);
+
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+
     const networkResponse = await fetch(request);
-    
+
     if (networkResponse.ok) {
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
-      cache.put(request, networkResponse.clone());
+      await cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
-    console.log('Cache and network failed:', error);
-    throw error;
+    console.log('Cache and network failed:', error?.message || error);
+
+    // Return a synthetic error response instead of throwing
+    return new Response('Resource not available offline', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: { 'Content-Type': 'text/plain' }
+    });
   }
 }
 
@@ -161,24 +175,61 @@ async function cacheFirst(request) {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(DYNAMIC_CACHE_NAME);
   const cachedResponse = await cache.match(request);
-  
-  const fetchPromise = fetch(request).then((networkResponse) => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+
+  // Create the fetch promise with proper error handling
+  const fetchPromise = (async () => {
+    try {
+      const networkResponse = await fetch(request);
+
+      if (networkResponse.ok) {
+        await cache.put(request, networkResponse.clone());
+      }
+      return networkResponse;
+    } catch (error) {
+      console.log('Network request failed:', error?.message || error);
+
+      // Return offline page for navigation requests if no cache
+      if (request.mode === 'navigate' && !cachedResponse) {
+        const offlineResponse = await caches.match('/offline');
+        if (offlineResponse) {
+          return offlineResponse;
+        }
+      }
+
+      // If we have a cached response, we can return undefined to use it
+      // Otherwise rethrow to trigger the final catch
+      if (cachedResponse) {
+        return undefined;
+      }
+      throw error;
     }
-    return networkResponse;
-  }).catch((error) => {
-    console.log('Network request failed:', error);
-    
-    // Return offline page for navigation requests if no cache
-    if (request.mode === 'navigate' && !cachedResponse) {
-      return caches.match('/offline');
+  })();
+
+  try {
+    const networkResponse = await fetchPromise;
+    // Return network response if valid, otherwise fall back to cache
+    if (networkResponse) {
+      return networkResponse;
     }
-    
-    throw error;
-  });
-  
-  return cachedResponse || fetchPromise;
+  } catch (error) {
+    console.log('Fetch failed, using cache if available:', error?.message || error);
+  }
+
+  // Return cached response as fallback
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  // Last resort: return offline page for navigation
+  if (request.mode === 'navigate') {
+    const offlineResponse = await caches.match('/offline');
+    if (offlineResponse) {
+      return offlineResponse;
+    }
+  }
+
+  // If nothing works, throw a proper error
+  throw new Error(`Failed to fetch: ${request.url}`);
 }
 
 // Background sync for offline actions

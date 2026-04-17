@@ -13,6 +13,26 @@ const notificationsSeed = [
   { id: 'notif-3', text: 'Tithe entry by Finance Officer', time: '3 hrs ago', unread: false },
 ];
 
+// Generate avatar URL from user metadata or fallback
+const getAvatarUrl = (user: any, useSupabaseAuth: boolean): string => {
+  if (!useSupabaseAuth || !user) {
+    return 'https://i.pravatar.cc/32?img=12';
+  }
+  // Use avatar from user_metadata if available
+  if (user.user_metadata?.avatar_url) {
+    return user.user_metadata.avatar_url;
+  }
+  // Generate deterministic avatar based on email hash
+  const email = user.email || 'user';
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = ((hash << 5) - hash) + email.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const imgNum = Math.abs(hash) % 70 + 1;
+  return `https://i.pravatar.cc/32?img=${imgNum}`;
+};
+
 export default function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -21,7 +41,8 @@ export default function Topbar() {
   const { user, signOut, useSupabaseAuth } = useAuth();
 
   const displayName = useSupabaseAuth ? (user?.user_metadata?.full_name || user?.email || 'Account') : 'Ps. Emmanuel Asante';
-  const displayRole = useSupabaseAuth ? 'Staff' : 'Pastor / Admin';
+  const displayRole = useSupabaseAuth ? (user?.user_metadata?.role || 'Staff') : 'Pastor / Admin';
+  const avatarUrl = getAvatarUrl(user, useSupabaseAuth);
 
   return (
     <header className="h-14 bg-white border-b border-border flex items-center justify-between px-6 shrink-0 z-10">
@@ -90,7 +111,7 @@ export default function Topbar() {
             className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-lg hover:bg-muted transition-colors"
           >
             <AppImage
-              src="https://i.pravatar.cc/32?img=12"
+              src={avatarUrl}
               alt="User profile photo"
               width={32}
               height={32}

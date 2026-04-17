@@ -8,6 +8,7 @@ import AppImage from '@/components/ui/AppImage';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { fetchMemberMinistries } from '@/lib/supabase/ministries';
+import { fetchMemberById, fetchMemberByEmail } from '@/lib/supabase/members';
 import ProfileStats from './components/ProfileStats';
 import MinistryInvolvement from './components/MinistryInvolvement';
 import ActivityTimeline from './components/ActivityTimeline';
@@ -26,6 +27,9 @@ interface UserProfile {
   date_of_birth?: string;
   role?: string;
   created_at?: string;
+  member_id?: string;
+  attendance_rate?: number;
+  total_giving?: number;
 }
 
 export default function ProfilePage() {
@@ -37,6 +41,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [ministriesCount, setMinistriesCount] = useState(0);
+  const [memberStats, setMemberStats] = useState({ attendanceRate: 0, totalGiving: 0 });
 
   useEffect(() => {
     // Always load profile when component mounts
@@ -103,6 +108,7 @@ export default function ProfilePage() {
         date_of_birth: data?.date_of_birth || '',
         role: data?.role || 'Staff',
         created_at: user.created_at,
+        member_id: data?.member_id,
       };
 
       setProfile(userProfile);
@@ -114,6 +120,43 @@ export default function ProfilePage() {
         setMinistriesCount(memberMinistries.length);
       } catch {
         // fallback: count stays 0
+      }
+
+      // Fetch member stats from members table if linked
+      let linkedMemberId = data?.member_id;
+      
+      // Auto-link by email if no member_id exists
+      if (!linkedMemberId && user.email) {
+        try {
+          const memberByEmail = await fetchMemberByEmail(user.email);
+          if (memberByEmail) {
+            linkedMemberId = memberByEmail.id;
+            // Update user profile with member_id for future lookups
+            await supabase
+              .from('user_profiles')
+              .upsert({
+                id: user.id,
+                member_id: linkedMemberId,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'id' });
+          }
+        } catch {
+          // Silent fail - will retry next time
+        }
+      }
+      
+      if (linkedMemberId) {
+        try {
+          const memberData = await fetchMemberById(linkedMemberId);
+          if (memberData) {
+            setMemberStats({
+              attendanceRate: memberData.attendance_rate || 0,
+              totalGiving: memberData.total_giving || 0,
+            });
+          }
+        } catch {
+          // fallback: keep default stats
+        }
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -213,8 +256,8 @@ export default function ProfilePage() {
         {/* Profile Stats */}
         <ProfileStats
           memberSince={profile.created_at || '2020-01-01'}
-          attendanceRate={0}
-          totalGiving={0}
+          attendanceRate={memberStats.attendanceRate}
+          totalGiving={memberStats.totalGiving}
           ministriesCount={ministriesCount}
         />
 
