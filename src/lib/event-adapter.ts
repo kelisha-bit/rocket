@@ -32,6 +32,10 @@ export interface FrontendChurchEvent {
   location: string;
   description: string;
   status: EventStatus;
+  /** Optional department/category label (e.g. 'Church-wide', 'Youth') */
+  department?: string;
+  /** Optional expected headcount for the event */
+  expectedAttendance?: number;
 }
 
 export type { EventStatus };

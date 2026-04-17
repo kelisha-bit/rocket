@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Backend integration point: replace with real auth API call
@@ -23,13 +24,15 @@ interface FormValues {
 }
 
 interface LoginFormProps {
-  onSwitchToSignUp?: () => void;
+  onSwitchToSignUp: () => void;
 }
 
 export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
   const { signIn, useSupabaseAuth } = useAuth();
 
   const {
@@ -46,23 +49,32 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
       if (useSupabaseAuth) {
         await signIn(data.email, data.password);
         toast.success('Welcome back', { description: 'Redirecting to your dashboard…' });
-        router.push('/dashboard');
+        router.push(redirectTo);
         return;
       }
 
-      // Demo auth
+      // Demo auth — check hardcoded credentials + localStorage sign-ups
       await new Promise(r => setTimeout(r, 1200));
       const match = DEMO_CREDENTIALS.find(
         c => c.email === data.email && c.password === data.password
+      );
+      const demoUsers = JSON.parse(localStorage.getItem('gw_demo_users') || '[]');
+      const demoMatch = demoUsers.find(
+        (u: { email: string; password: string; fullName: string }) => u.email === data.email && u.password === data.password
       );
 
       if (match) {
         toast.success(`Welcome back, ${match.role}`, {
           description: 'Redirecting to your dashboard…',
         });
-        setTimeout(() => router.push('/dashboard'), 800);
+        setTimeout(() => router.push(redirectTo), 800);
+      } else if (demoMatch) {
+        toast.success(`Welcome back, ${demoMatch.fullName}`, {
+          description: 'Redirecting to your dashboard…',
+        });
+        setTimeout(() => router.push(redirectTo), 800);
       } else {
-        setError('email', { message: 'Invalid credentials — use the demo accounts below to sign in' });
+        setError('email', { message: 'Invalid credentials — use the demo accounts below or sign up for a new account' });
       }
     } catch (e: any) {
       setError('email', { message: e?.message || 'Sign in failed' });
@@ -125,9 +137,9 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
             <label htmlFor="password" className="block text-sm font-medium text-foreground">
               Password
             </label>
-            <button type="button" className="text-xs text-primary hover:underline">
+            <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
               Forgot password?
-            </button>
+            </Link>
           </div>
           <div className="relative">
             <input
@@ -225,17 +237,18 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
 
       <p className="text-center text-sm text-muted-foreground mt-6">
         Don&apos;t have an account?{' '}
-        {onSwitchToSignUp ? (
-          <button
-            type="button"
-            onClick={onSwitchToSignUp}
-            className="text-primary font-medium hover:underline"
-          >
-            Create one
-          </button>
-        ) : (
-          <span className="text-primary cursor-pointer hover:underline">Contact church admin</span>
-        )}
+        <button
+          type="button"
+          onClick={onSwitchToSignUp}
+          className="text-primary font-medium hover:underline"
+        >
+          Create one
+        </button>
+      </p>
+
+      <p className="text-center text-xs text-muted-foreground mt-3">
+        Need help accessing your account?{' '}
+        <span className="text-primary cursor-pointer hover:underline">Contact church admin</span>
       </p>
     </div>
   );

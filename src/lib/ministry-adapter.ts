@@ -1,4 +1,5 @@
-import { Ministry as DBMinistry, fetchMinistries, createMinistry, updateMinistry, deleteMinistry } from './supabase/ministries';
+import { Ministry as DBMinistry, fetchMinistries, createMinistry, updateMinistry, deleteMinistry, fetchMinistryMemberIds } from './supabase/ministries';
+import { fetchMembers } from './supabase/members';
 
 function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== 'object') return 'Unknown error';
@@ -24,6 +25,7 @@ export interface Ministry {
   meetingTime: string;
   members: number;
   status: 'Active' | 'Inactive' | 'New';
+  memberNames?: string[];
 }
 
 // Transform database ministry to frontend format
@@ -31,11 +33,11 @@ export function adaptMinistryToFrontend(dbMinistry: DBMinistry, leaderName?: str
   return {
     id: dbMinistry.id,
     name: dbMinistry.name,
-    leader: leaderName || '—',
+    leader: leaderName || dbMinistry.leader_name || '—',
     leaderId: dbMinistry.head_member_id,
     meetingDay: dbMinistry.meeting_day,
     meetingTime: dbMinistry.meeting_time,
-    members: 0,
+    members: dbMinistry.member_count ?? 0,
     status: dbMinistry.status,
   };
 }
@@ -92,6 +94,21 @@ export async function deleteFrontendMinistry(id: string): Promise<void> {
     await deleteMinistry(id);
   } catch (error) {
     console.error('Error deleting frontend ministry:', error);
+    throw error;
+  }
+}
+
+// Fetch member names for a specific ministry
+export async function fetchMinistryMemberNames(ministryId: string): Promise<string[]> {
+  try {
+    const [memberIds, allMembers] = await Promise.all([
+      fetchMinistryMemberIds(ministryId),
+      fetchMembers(),
+    ]);
+    const memberMap = new Map(allMembers.map(m => [m.id, m.full_name]));
+    return memberIds.map(id => memberMap.get(id) ?? 'Unknown').filter(n => n !== 'Unknown');
+  } catch (error) {
+    console.error('Error fetching ministry member names:', error);
     throw error;
   }
 }

@@ -135,7 +135,7 @@ export default function MemberManagementContent() {
         if (filters.titheStatus && m.titheStatus !== filters.titheStatus) return false;
         if (filters.gender && m.gender !== filters.gender) return false;
         if (filters.cellGroup && !m.cellGroup.toLowerCase().includes(filters.cellGroup.toLowerCase())) return false;
-        if (filters.ministry && m.ministry !== filters.ministry) return false;
+        if (filters.ministry && !(m.ministries ?? [m.ministry]).includes(filters.ministry)) return false;
         return true;
       })
 
@@ -213,6 +213,7 @@ export default function MemberManagementContent() {
       titheStatus: 'tithe-none',
       cellGroup: '—',
       ministry: '—',
+      ministries: ['—'],
       joinDate: '14/04/2026',
       lastAttendance: '—',
       attendanceRate: 0,
@@ -344,6 +345,7 @@ export default function MemberManagementContent() {
         setSearch={v => { setSearch(v); setPage(1); }}
         filters={filters}
         setFilters={v => { setFilters(v); setPage(1); }}
+        ministryNames={ministries.map(m => m.name)}
       />
 
       {/* Loading state */}
@@ -666,22 +668,50 @@ export default function MemberManagementContent() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Ministry</label>
-                <select
-                  value={editMember.ministry}
-                  onChange={e => setEditMember({ ...editMember, ministry: e.target.value })}
-                  disabled={loadingMinistries}
-                  className="mt-1 w-full text-sm border border-border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="—">No ministry</option>
-                  {ministries.map(ministry => (
-                    <option key={ministry.id} value={ministry.name}>
-                      {ministry.name}
-                    </option>
-                  ))}
-                </select>
-                {loadingMinistries && (
+                <label className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Ministries
+                </label>
+                {loadingMinistries ? (
                   <p className="text-xs text-muted-foreground mt-1">Loading ministries...</p>
+                ) : (
+                  <div className="mt-1 border border-border rounded-lg bg-white max-h-36 overflow-y-auto divide-y divide-border">
+                    {ministries.length === 0 ? (
+                      <p className="text-xs text-muted-foreground px-3 py-2">No ministries available</p>
+                    ) : (
+                      ministries.map(ministry => {
+                        const selected = (editMember.ministries ?? []).includes(ministry.name);
+                        return (
+                          <label
+                            key={ministry.id}
+                            className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => {
+                                const current = (editMember.ministries ?? []).filter(n => n !== '—');
+                                const next = selected
+                                  ? current.filter(n => n !== ministry.name)
+                                  : [...current, ministry.name];
+                                setEditMember({
+                                  ...editMember,
+                                  ministries: next.length > 0 ? next : ['—'],
+                                  ministry: next[0] ?? '—',
+                                });
+                              }}
+                              className="accent-primary"
+                            />
+                            <span className="text-sm text-foreground">{ministry.name}</span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+                {(editMember.ministries ?? []).filter(n => n !== '—').length > 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Selected: {(editMember.ministries ?? []).filter(n => n !== '—').join(', ')}
+                  </p>
                 )}
               </div>
 

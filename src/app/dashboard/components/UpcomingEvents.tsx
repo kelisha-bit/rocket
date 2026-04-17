@@ -71,8 +71,8 @@ export default function UpcomingEvents() {
             >
               <div className="flex items-start justify-between gap-2 mb-1.5">
                 <p className="text-[13px] font-semibold text-foreground leading-snug flex-1">{evt.title}</p>
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${typeColor[evt.department] ?? 'bg-gray-100 text-gray-600'}`}>
-                  {evt.department}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md shrink-0 ${typeColor[evt.department ?? ''] ?? 'bg-gray-100 text-gray-600'}`}>
+                  {evt.department ?? ''}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
@@ -86,10 +86,10 @@ export default function UpcomingEvents() {
                   <MapPin size={10} className="shrink-0" />
                   <span className="truncate">{evt.location}</span>
                 </span>
-                {evt.expectedAttendance > 0 && (
+                {(evt.expectedAttendance ?? 0) > 0 && (
                   <span className="flex items-center gap-1 shrink-0 ml-auto">
                     <Users size={10} />
-                    {evt.expectedAttendance.toLocaleString()} exp.
+                    {(evt.expectedAttendance ?? 0).toLocaleString()} exp.
                   </span>
                 )}
               </div>

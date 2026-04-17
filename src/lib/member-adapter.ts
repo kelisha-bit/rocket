@@ -1,4 +1,12 @@
-import { Member as DBMember, fetchMembers, createMember, updateMember, deleteMember, fetchMemberById } from './supabase/members';
+import {
+  Member as DBMember,
+  fetchMembers,
+  createMember,
+  updateMember,
+  deleteMember,
+  fetchMemberById,
+  syncMemberMinistries,
+} from './supabase/members';
 import { Member as FrontendMember, MemberStatus, TitheStatus } from '@/app/member-management/components/memberData';
 import { fetchFrontendMinistries } from './ministry-adapter';
 import { fetchFrontendCellGroups } from './cellGroup-adapter';
@@ -65,8 +73,17 @@ function generateMemberCode(): string {
   return `GWC-${y}${m}${d}-${rand}`;
 }
 
-// Transform database member to frontend member format
-export function adaptMemberToFrontend(dbMember: DBMember, ministryName?: string, cellGroupName?: string): FrontendMember {
+/**
+ * Transform a DB member into the frontend Member shape.
+ * ministryNames — all ministry names resolved from ministry_ids
+ * cellGroupName — resolved cell group name
+ */
+export function adaptMemberToFrontend(
+  dbMember: DBMember,
+  ministryNames: string[] = [],
+  cellGroupName?: string,
+): FrontendMember {
+  const primaryMinistry = ministryNames[0] ?? '—';
   return {
     id: dbMember.id,
     memberId: dbMember.member_code,
@@ -81,7 +98,8 @@ export function adaptMemberToFrontend(dbMember: DBMember, ministryName?: string,
     status: dbMember.status as MemberStatus,
     titheStatus: dbMember.tithe_status as TitheStatus,
     cellGroup: cellGroupName || '—',
-    ministry: ministryName || '—',
+    ministry: primaryMinistry,
+    ministries: ministryNames.length > 0 ? ministryNames : ['—'],
     joinDate: dbMember.join_date,
     lastAttendance: dbMember.last_attendance_date || '—',
     attendanceRate: dbMember.attendance_rate,
@@ -91,13 +109,17 @@ export function adaptMemberToFrontend(dbMember: DBMember, ministryName?: string,
     occupation: dbMember.occupation,
     emergencyContact: dbMember.emergency_contact,
     baptised: dbMember.baptised,
-    attendanceHistory: [], // Will be populated from attendance_records table later
-    recentGiving: [],      // Will be populated from giving_transactions table later
+    attendanceHistory: [],
+    recentGiving: [],
   };
 }
 
-// Transform frontend member to database member format
-export function adaptMemberToDatabase(frontendMember: FrontendMember, ministryId?: string, cellGroupId?: string): Partial<DBMember> {
+/** Transform frontend member to DB columns (excludes junction-table ministries). */
+export function adaptMemberToDatabase(
+  frontendMember: FrontendMember,
+  primaryMinistryId?: string,
+  cellGroupId?: string,
+): Partial<DBMember> {
   return {
     member_code: frontendMember.memberId,
     full_name: frontendMember.name,
@@ -110,7 +132,7 @@ export function adaptMemberToDatabase(frontendMember: FrontendMember, ministryId
     status: frontendMember.status,
     tithe_status: frontendMember.titheStatus,
     join_date: toIsoDateOrNull(frontendMember.joinDate) ?? undefined,
-    last_attendance_date: toIsoDateOrNull(frontendMember.lastAttendance),
+    last_attendance_date: toIsoDateOrNull(frontendMember.lastAttendance) ?? undefined,
     attendance_rate: frontendMember.attendanceRate,
     total_giving: frontendMember.totalGiving,
     address: frontendMember.address,
@@ -118,12 +140,28 @@ export function adaptMemberToDatabase(frontendMember: FrontendMember, ministryId
     occupation: frontendMember.occupation,
     emergency_contact: frontendMember.emergencyContact,
     baptised: frontendMember.baptised,
-    primary_ministry_id: ministryId,
+    // Keep primary_ministry_id in sync with the first selected ministry
+    primary_ministry_id: primaryMinistryId,
     primary_cell_group_id: cellGroupId,
   };
 }
 
-// Fetch members and adapt to frontend format
+/** Resolve ministry names → IDs, filtering out '—' placeholders. */
+function resolveMinistryIds(
+  ministryNames: string[],
+  ministryMap: Map<string, string>, // name → id
+): string[] {
+  return ministryNames
+    .filter(n => n && n !== '—')
+    .map(n => ministryMap.get(n))
+    .filter((id): id is string => !!id);
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/** Fetch all members and adapt to frontend format. */
 export async function fetchFrontendMembers(): Promise<FrontendMember[]> {
   try {
     const [dbMembers, ministries, cellGroups] = await Promise.all([
@@ -132,19 +170,20 @@ export async function fetchFrontendMembers(): Promise<FrontendMember[]> {
       fetchFrontendCellGroups(),
     ]);
 
-    // Create lookup maps for efficient ministry and cell group name resolution
-    const ministryMap = new Map(ministries.map(m => [m.id, m.name]));
+    const ministryMapById = new Map(ministries.map(m => [m.id, m.name]));
     const cellGroupMap = new Map(cellGroups.map(cg => [cg.id, cg.name]));
 
     return dbMembers.map(dbMember => {
-      const ministryName = dbMember.primary_ministry_id 
-        ? ministryMap.get(dbMember.primary_ministry_id) 
+      // Resolve all ministry names from the junction-table IDs
+      const ministryNames = (dbMember.ministry_ids ?? [])
+        .map(id => ministryMapById.get(id))
+        .filter((n): n is string => !!n);
+
+      const cellGroupName = dbMember.primary_cell_group_id
+        ? cellGroupMap.get(dbMember.primary_cell_group_id)
         : undefined;
-      const cellGroupName = dbMember.primary_cell_group_id 
-        ? cellGroupMap.get(dbMember.primary_cell_group_id) 
-        : undefined;
-      
-      return adaptMemberToFrontend(dbMember, ministryName, cellGroupName);
+
+      return adaptMemberToFrontend(dbMember, ministryNames, cellGroupName);
     });
   } catch (error) {
     console.error('Error fetching frontend members:', error);
@@ -152,32 +191,44 @@ export async function fetchFrontendMembers(): Promise<FrontendMember[]> {
   }
 }
 
-// Create member from frontend format
+/** Create a new member from frontend format, including junction-table rows. */
 export async function createFrontendMember(frontendMember: FrontendMember): Promise<FrontendMember> {
   let candidate = { ...frontendMember };
   const maxAttempts = 5;
 
-  // Fetch ministries and cell groups to resolve IDs
   const [ministries, cellGroups] = await Promise.all([
     fetchFrontendMinistries(),
     fetchFrontendCellGroups(),
   ]);
 
-  // Find ministry ID by name
-  const ministryId = frontendMember.ministry && frontendMember.ministry !== '—'
-    ? ministries.find(m => m.name === frontendMember.ministry)?.id
-    : undefined;
+  const ministryNameToId = new Map(ministries.map(m => [m.name, m.id]));
+  const ministryIdToName = new Map(ministries.map(m => [m.id, m.name]));
 
-  // Find cell group ID by name
+  const selectedNames = (frontendMember.ministries ?? []).filter(n => n && n !== '—');
+  const ministryIds = resolveMinistryIds(selectedNames, ministryNameToId);
+  const primaryMinistryId = ministryIds[0];
+
   const cellGroupId = frontendMember.cellGroup && frontendMember.cellGroup !== '—'
     ? cellGroups.find(cg => cg.name === frontendMember.cellGroup)?.id
     : undefined;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const dbData = adaptMemberToDatabase(candidate, ministryId, cellGroupId);
+      const dbData = adaptMemberToDatabase(candidate, primaryMinistryId, cellGroupId);
       const createdDbMember = await createMember(dbData);
-      return adaptMemberToFrontend(createdDbMember, frontendMember.ministry, frontendMember.cellGroup);
+
+      // Sync junction table
+      await syncMemberMinistries(createdDbMember.id, ministryIds);
+
+      const resolvedNames = ministryIds
+        .map(id => ministryIdToName.get(id))
+        .filter((n): n is string => !!n);
+
+      return adaptMemberToFrontend(
+        { ...createdDbMember, ministry_ids: ministryIds },
+        resolvedNames,
+        frontendMember.cellGroup !== '—' ? frontendMember.cellGroup : undefined,
+      );
     } catch (error) {
       if (isDuplicateMemberCodeError(error) && attempt < maxAttempts) {
         candidate = { ...candidate, memberId: generateMemberCode() };
@@ -191,35 +242,47 @@ export async function createFrontendMember(frontendMember: FrontendMember): Prom
   throw new Error('Create member failed: unable to generate a unique member code');
 }
 
-// Update member from frontend format
+/** Update an existing member, including junction-table rows. */
 export async function updateFrontendMember(id: string, frontendMember: FrontendMember): Promise<FrontendMember> {
   try {
-    // Fetch ministries and cell groups to resolve IDs
     const [ministries, cellGroups] = await Promise.all([
       fetchFrontendMinistries(),
       fetchFrontendCellGroups(),
     ]);
 
-    // Find ministry ID by name
-    const ministryId = frontendMember.ministry && frontendMember.ministry !== '—'
-      ? ministries.find(m => m.name === frontendMember.ministry)?.id
-      : undefined;
+    const ministryNameToId = new Map(ministries.map(m => [m.name, m.id]));
+    const ministryIdToName = new Map(ministries.map(m => [m.id, m.name]));
 
-    // Find cell group ID by name
+    const selectedNames = (frontendMember.ministries ?? []).filter(n => n && n !== '—');
+    const ministryIds = resolveMinistryIds(selectedNames, ministryNameToId);
+    const primaryMinistryId = ministryIds[0];
+
     const cellGroupId = frontendMember.cellGroup && frontendMember.cellGroup !== '—'
       ? cellGroups.find(cg => cg.name === frontendMember.cellGroup)?.id
       : undefined;
 
-    const dbData = adaptMemberToDatabase(frontendMember, ministryId, cellGroupId);
+    const dbData = adaptMemberToDatabase(frontendMember, primaryMinistryId, cellGroupId);
     const updatedDbMember = await updateMember(id, dbData);
-    return adaptMemberToFrontend(updatedDbMember, frontendMember.ministry, frontendMember.cellGroup);
+
+    // Sync junction table
+    await syncMemberMinistries(id, ministryIds);
+
+    const resolvedNames = ministryIds
+      .map(mid => ministryIdToName.get(mid))
+      .filter((n): n is string => !!n);
+
+    return adaptMemberToFrontend(
+      { ...updatedDbMember, ministry_ids: ministryIds },
+      resolvedNames,
+      frontendMember.cellGroup !== '—' ? frontendMember.cellGroup : undefined,
+    );
   } catch (error) {
     console.error('Error updating frontend member:', error);
     throw new Error(`Update member failed: ${getSupabaseErrorMessage(error)}`);
   }
 }
 
-// Fetch single member by ID and adapt to frontend format
+/** Fetch a single member by ID and adapt to frontend format. */
 export async function fetchFrontendMemberById(id: string): Promise<FrontendMember | null> {
   try {
     const [dbMember, ministries, cellGroups] = await Promise.all([
@@ -230,25 +293,25 @@ export async function fetchFrontendMemberById(id: string): Promise<FrontendMembe
 
     if (!dbMember) return null;
 
-    // Create lookup maps
-    const ministryMap = new Map(ministries.map(m => [m.id, m.name]));
+    const ministryMapById = new Map(ministries.map(m => [m.id, m.name]));
     const cellGroupMap = new Map(cellGroups.map(cg => [cg.id, cg.name]));
 
-    const ministryName = dbMember.primary_ministry_id 
-      ? ministryMap.get(dbMember.primary_ministry_id) 
-      : undefined;
-    const cellGroupName = dbMember.primary_cell_group_id 
-      ? cellGroupMap.get(dbMember.primary_cell_group_id) 
+    const ministryNames = (dbMember.ministry_ids ?? [])
+      .map(mid => ministryMapById.get(mid))
+      .filter((n): n is string => !!n);
+
+    const cellGroupName = dbMember.primary_cell_group_id
+      ? cellGroupMap.get(dbMember.primary_cell_group_id)
       : undefined;
 
-    return adaptMemberToFrontend(dbMember, ministryName, cellGroupName);
+    return adaptMemberToFrontend(dbMember, ministryNames, cellGroupName);
   } catch (error) {
     console.error('Error fetching frontend member by ID:', error);
     throw error;
   }
 }
 
-// Delete member
+/** Delete a member (junction rows cascade automatically). */
 export async function deleteFrontendMember(id: string): Promise<void> {
   try {
     await deleteMember(id);

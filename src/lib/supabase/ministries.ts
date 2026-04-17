@@ -10,6 +10,7 @@ export interface Ministry {
   meeting_day: string;
   meeting_time: string;
   status: MinistryStatus;
+  member_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -24,6 +25,7 @@ export function transformMinistry(dbMinistry: any): Ministry {
     meeting_day: dbMinistry.meeting_day || 'Sunday',
     meeting_time: dbMinistry.meeting_time || '9:00 AM',
     status: dbMinistry.status || 'Active',
+    member_count: Number(dbMinistry._member_count ?? 0),
     created_at: dbMinistry.created_at,
     updated_at: dbMinistry.updated_at,
   };
@@ -32,6 +34,8 @@ export function transformMinistry(dbMinistry: any): Ministry {
 // Fetch all ministries
 export async function fetchMinistries(): Promise<Ministry[]> {
   const supabase = createClient();
+
+  // Fetch ministries with leader info
   const { data, error } = await supabase
     .from('ministries')
     .select(`
@@ -42,10 +46,30 @@ export async function fetchMinistries(): Promise<Ministry[]> {
 
   if (error) {
     console.error('Error fetching ministries:', error);
-    throw error;
+    throw new Error(`DB error (${error.code}): ${error.message}${error.hint ? ' — ' + error.hint : ''}`);
   }
 
-  return data ? data.map(transformMinistry) : [];
+  if (!data || data.length === 0) return [];
+
+  // Count members per ministry using the member_ministries junction table
+  // so members in multiple ministries are counted in each one
+  let countMap: Record<string, number> = {};
+  try {
+    const { data: junctionRows } = await supabase
+      .from('member_ministries')
+      .select('ministry_id');
+    if (junctionRows) {
+      for (const row of junctionRows) {
+        if (row.ministry_id) {
+          countMap[row.ministry_id] = (countMap[row.ministry_id] || 0) + 1;
+        }
+      }
+    }
+  } catch {
+    // fallback: counts stay 0
+  }
+
+  return data.map(m => transformMinistry({ ...m, _member_count: countMap[m.id] ?? 0 }));
 }
 
 // Fetch a single ministry by ID
@@ -135,6 +159,22 @@ export async function deleteMinistry(id: string): Promise<void> {
     console.error('Error deleting ministry:', error);
     throw error;
   }
+}
+
+// Fetch member IDs for a specific ministry from the junction table
+export async function fetchMinistryMemberIds(ministryId: string): Promise<string[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('member_ministries')
+    .select('member_id')
+    .eq('ministry_id', ministryId);
+
+  if (error) {
+    console.error('Error fetching ministry members:', error);
+    throw error;
+  }
+
+  return data ? data.map((r: { member_id: string }) => r.member_id) : [];
 }
 
 // Search ministries by name or location

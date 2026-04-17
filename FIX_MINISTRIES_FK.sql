@@ -56,7 +56,19 @@ INSERT INTO ministries (name, head_member_id, meeting_day, meeting_time, status)
   ('Drama Ministry', NULL, 'Friday', '6:00 PM', 'Active'),
   ('Music Ministry', NULL, 'Thursday', '6:00 PM', 'Active'),
   ('Counseling Ministry', NULL, 'By Appointment', 'Various', 'Active'),
-  ('Outreach Ministry', NULL, 'Monthly', 'Various', 'Active');
+  ('Outreach Ministry', NULL, 'Monthly', 'Various', 'Active'),
+  ('Women Ministry', NULL, 'Saturday', '10:00 AM', 'Active'),
+  ('Men Ministry', NULL, 'Saturday', '8:00 AM', 'Active'),
+  ('Marriage & Family', NULL, 'Friday', '6:00 PM', 'Active'),
+  ('Finance Committee', NULL, 'First Monday', '5:00 PM', 'Active'),
+  ('Elders Board', NULL, 'Second Sunday', '1:00 PM', 'Active'),
+  ('Welfare Ministry', NULL, 'Wednesday', '5:00 PM', 'Active'),
+  ('Sanctuary Keepers', NULL, 'Sunday', '6:00 AM', 'Active'),
+  ('Intercessory Prayer', NULL, 'Tuesday', '6:00 AM', 'Active'),
+  ('Missions Ministry', NULL, 'Monthly', 'Various', 'Active'),
+  ('Discipleship Ministry', NULL, 'Thursday', '7:00 PM', 'Active'),
+  ('Dance Ministry', NULL, 'Friday', '5:00 PM', 'Active'),
+  ('Security Ministry', NULL, 'Sunday', '6:30 AM', 'Active');
 
 SELECT '✓ Ministries table recreated with foreign key: ' || COUNT(*) || ' records' as status FROM ministries;
 

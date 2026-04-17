@@ -74,11 +74,12 @@ export default function DemographicsChart() {
       { name: 'Male', value: males, color: GENDER_COLORS.Male, percentage: total ? +((males / total) * 100).toFixed(1) : 0 },
     ];
 
-    // Ministry breakdown
+    // Ministry breakdown — count each ministry a member belongs to
     const ministryCount = new Map<string, number>();
     for (const m of members) {
-      if (m.ministry && m.ministry !== '—') {
-        ministryCount.set(m.ministry, (ministryCount.get(m.ministry) ?? 0) + 1);
+      const allMinistries = (m.ministries ?? [m.ministry]).filter(n => n && n !== '—');
+      for (const name of allMinistries) {
+        ministryCount.set(name, (ministryCount.get(name) ?? 0) + 1);
       }
     }
     const ministryData = Array.from(ministryCount.entries())

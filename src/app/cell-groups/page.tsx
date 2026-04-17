@@ -18,7 +18,7 @@ type CellGroup = {
   meetingTime: string;
   location: string;
   members: number;
-  status: 'Active' | 'Needs Attention';
+  status: string;
 };
 
 export default function CellGroupsPage() {

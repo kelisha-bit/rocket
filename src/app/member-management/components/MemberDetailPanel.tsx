@@ -174,7 +174,7 @@ export default function MemberDetailPanel({ member, onClose, onPhotoUpdate }: Pr
                 <div className="space-y-2">
                   {[
                     { icon: <Users size={14} />, label: 'Cell Group', value: member.cellGroup },
-                    { icon: <BookOpen size={14} />, label: 'Ministry', value: member.ministry },
+                    { icon: <BookOpen size={14} />, label: 'Ministries', value: (member.ministries ?? [member.ministry]).filter(n => n !== '—').join(', ') || '—' },
                     { icon: <Calendar size={14} />, label: 'Last Attendance', value: member.lastAttendance },
                     { icon: <HandCoins size={14} />, label: 'Tithe Status', value: member.titheStatus.replace('tithe-', '').replace('-', ' ') },
                   ].map(item => (

@@ -5,16 +5,16 @@ import { Search, X } from 'lucide-react';
 import { Filters } from './MemberManagementContent';
 
 const cellGroups = ['Bethel Cell — Dansoman', 'Grace Cell — Tema', 'Zion Cell — Legon', 'Faith Cell — Accra Central', 'Canaan Cell — Adenta', 'Hope Cell — Madina', 'Shalom Cell — Ashaiman'];
-const ministries = ['Worship Team', 'Ushering', 'Finance Committee', 'Youth Ministry', 'Elders Board', 'Children Ministry', 'Media & Tech', 'Prayer Ministry', 'Evangelism Team', 'Women Ministry', 'Hospitality'];
 
 interface Props {
   search: string;
   setSearch: (v: string) => void;
   filters: Filters;
   setFilters: (v: Filters) => void;
+  ministryNames: string[];
 }
 
-export default function MemberFilters({ search, setSearch, filters, setFilters }: Props) {
+export default function MemberFilters({ search, setSearch, filters, setFilters, ministryNames }: Props) {
   const hasFilters = search || Object.values(filters).some(Boolean);
 
   const update = (key: keyof Filters, value: string) =>
@@ -84,7 +84,7 @@ export default function MemberFilters({ search, setSearch, filters, setFilters }
           className="text-sm border border-border rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-[150px]"
         >
           <option value="">All Ministries</option>
-          {ministries.map(m => (
+          {ministryNames.map(m => (
             <option key={`min-filter-${m}`} value={m}>{m}</option>
           ))}
         </select>

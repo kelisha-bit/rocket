@@ -81,7 +81,7 @@ export default function AlertsWidget() {
 
     // Upcoming events near capacity
     const nearCapacityEvents = data.upcomingEvents.filter(
-      e => e.expectedAttendance > 0 && e.expectedAttendance >= 250
+      e => (e.expectedAttendance ?? 0) > 0 && (e.expectedAttendance ?? 0) >= 250
     );
     if (nearCapacityEvents.length > 0) {
       const evt = nearCapacityEvents[0];
@@ -89,7 +89,7 @@ export default function AlertsWidget() {
         id: `evt-cap-${evt.id}`,
         type: 'warning',
         title: 'Event Capacity Alert',
-        message: `"${evt.title}" has ${evt.expectedAttendance.toLocaleString()} expected attendees. Confirm venue capacity.`,
+        message: `"${evt.title}" has ${(evt.expectedAttendance ?? 0).toLocaleString()} expected attendees. Confirm venue capacity.`,
         category: 'events',
         actionRequired: true,
       });

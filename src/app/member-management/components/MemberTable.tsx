@@ -146,7 +146,12 @@ export default function MemberTable({ members, selectedIds, toggleSelect, toggle
 
               {/* Ministry */}
               <td className="px-3 py-3 hidden xl:table-cell">
-                <span className="text-[12px] text-muted-foreground truncate block max-w-[140px]">{member.ministry}</span>
+                <span
+                  className="text-[12px] text-muted-foreground truncate block max-w-[140px]"
+                  title={(member.ministries ?? [member.ministry]).filter(n => n !== '—').join(', ') || '—'}
+                >
+                  {(member.ministries ?? [member.ministry]).filter(n => n !== '—').join(', ') || '—'}
+                </span>
               </td>
 
               {/* Status */}

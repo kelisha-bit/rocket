@@ -200,4 +200,3 @@ export async function getEventStatistics(startDate?: string, endDate?: string) {
 
 // Keep old exports for compatibility
 export type { EventStatus as EventDepartment };
-export type { ChurchEvent };

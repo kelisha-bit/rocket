@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import LoginForm from './components/LoginForm';
 import SignUpForm from './components/SignUpForm';
 
@@ -53,17 +53,19 @@ export default function LoginPage() {
             ))}
           </div>
           <p className="text-white/40 text-xs mt-8">
-            © 2026 Greater Works City Church · Accra, Ghana
+            2026 Greater Works City Church · Accra, Ghana
           </p>
         </div>
       </div>
       {/* Right form panel */}
       <div className="flex-1 flex items-center justify-center bg-background p-6 lg:p-12">
-        {mode === 'login' ? (
-          <LoginForm onSwitchToSignUp={() => setMode('signup')} />
-        ) : (
-          <SignUpForm onSwitchToLogin={() => setMode('login')} />
-        )}
+        <Suspense fallback={<div className="w-full max-w-md animate-pulse"><div className="h-8 bg-muted rounded mb-4" /><div className="h-8 bg-muted rounded mb-4" /><div className="h-10 bg-muted rounded" /></div>}>
+          {mode === 'login' ? (
+            <LoginForm onSwitchToSignUp={() => setMode('signup')} />
+          ) : (
+            <SignUpForm onSwitchToSignIn={() => setMode('login')} />
+          )}
+        </Suspense>
       </div>
     </div>
   );

@@ -25,7 +25,10 @@ export interface Member {
   emergency_contact: string;
   baptised: boolean;
   primary_cell_group_id?: string;
+  /** @deprecated Use ministry_ids (from member_ministries junction table) instead */
   primary_ministry_id?: string;
+  /** IDs of all ministries this member belongs to (from member_ministries table) */
+  ministry_ids?: string[];
   created_at: string;
   updated_at: string;
 }
@@ -55,23 +58,26 @@ export function transformMember(dbMember: any): Member {
     baptised: dbMember.baptised || false,
     primary_cell_group_id: dbMember.primary_cell_group_id,
     primary_ministry_id: dbMember.primary_ministry_id,
+    ministry_ids: dbMember.ministry_ids ?? [],
     created_at: dbMember.created_at,
     updated_at: dbMember.updated_at,
   };
 }
 
 // Fetch all members, with total_giving computed from giving_transactions
+// and ministry_ids populated from the member_ministries junction table
 export async function fetchMembers(): Promise<Member[]> {
   const supabase = createClient();
 
-  // Run both queries in parallel
-  const [membersResult, txResult] = await Promise.all([
+  // Run all queries in parallel
+  const [membersResult, txResult, ministriesResult] = await Promise.all([
     supabase.from('members').select('*').order('created_at', { ascending: false }),
     supabase
       .from('giving_transactions')
       .select('member_id, amount')
       .eq('type', 'income')
       .not('member_id', 'is', null),
+    supabase.from('member_ministries').select('member_id, ministry_id'),
   ]);
 
   if (membersResult.error) {
@@ -89,11 +95,21 @@ export async function fetchMembers(): Promise<Member[]> {
     }
   }
 
+  // Build a map of member_id → ministry_ids[]
+  const ministryIdsMap = new Map<string, string[]>();
+  if (ministriesResult.data) {
+    for (const row of ministriesResult.data) {
+      const existing = ministryIdsMap.get(row.member_id) ?? [];
+      existing.push(row.ministry_id);
+      ministryIdsMap.set(row.member_id, existing);
+    }
+  }
+
   return (membersResult.data ?? []).map(dbMember => {
     const computed = givingMap.get(dbMember.id);
-    // Prefer live-computed total; fall back to stored value if no transactions linked
     const total_giving = computed !== undefined ? computed : (dbMember.total_giving ?? 0);
-    return transformMember({ ...dbMember, total_giving });
+    const ministry_ids = ministryIdsMap.get(dbMember.id) ?? [];
+    return transformMember({ ...dbMember, total_giving, ministry_ids });
   });
 }
 
@@ -101,13 +117,14 @@ export async function fetchMembers(): Promise<Member[]> {
 export async function fetchMemberById(id: string): Promise<Member | null> {
   const supabase = createClient();
 
-  const [memberResult, txResult] = await Promise.all([
+  const [memberResult, txResult, ministriesResult] = await Promise.all([
     supabase.from('members').select('*').eq('id', id).single(),
     supabase
       .from('giving_transactions')
       .select('amount')
       .eq('member_id', id)
       .eq('type', 'income'),
+    supabase.from('member_ministries').select('ministry_id').eq('member_id', id),
   ]);
 
   if (memberResult.error) {
@@ -122,7 +139,11 @@ export async function fetchMemberById(id: string): Promise<Member | null> {
     ? txResult.data.reduce((sum, tx) => sum + (tx.amount ?? 0), 0)
     : memberResult.data.total_giving ?? 0;
 
-  return transformMember({ ...memberResult.data, total_giving: computedTotal });
+  const ministry_ids = ministriesResult.data
+    ? ministriesResult.data.map((r: { ministry_id: string }) => r.ministry_id)
+    : [];
+
+  return transformMember({ ...memberResult.data, total_giving: computedTotal, ministry_ids });
 }
 
 // Create a new member
@@ -223,6 +244,38 @@ export async function deleteMember(id: string): Promise<void> {
   if (error) {
     console.error('Error deleting member:', error);
     throw error;
+  }
+}
+
+/**
+ * Sync the member_ministries junction table for a given member.
+ * Replaces all existing rows for that member with the provided ministry IDs.
+ */
+export async function syncMemberMinistries(memberId: string, ministryIds: string[]): Promise<void> {
+  const supabase = createClient();
+
+  // Delete existing rows for this member
+  const { error: deleteError } = await supabase
+    .from('member_ministries')
+    .delete()
+    .eq('member_id', memberId);
+
+  if (deleteError) {
+    console.error('Error clearing member ministries:', deleteError);
+    throw deleteError;
+  }
+
+  if (ministryIds.length === 0) return;
+
+  // Insert new rows
+  const rows = ministryIds.map(ministry_id => ({ member_id: memberId, ministry_id }));
+  const { error: insertError } = await supabase
+    .from('member_ministries')
+    .insert(rows);
+
+  if (insertError) {
+    console.error('Error inserting member ministries:', insertError);
+    throw insertError;
   }
 }
 

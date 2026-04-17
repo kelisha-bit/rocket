@@ -62,10 +62,10 @@ export function adaptTransactionToDatabase(frontendTransaction: FrontendTransact
     type: frontendTransaction.type,
     category: frontendTransaction.category,
     description: frontendTransaction.description,
-    // Only set member_id if it's a valid UUID, otherwise set to null
+    // Only set member_id if it's a valid UUID, otherwise leave undefined
     member_id: frontendTransaction.memberId && frontendTransaction.memberId.trim() !== '' 
       ? frontendTransaction.memberId 
-      : null,
+      : undefined,
     method: frontendTransaction.method,
     amount: frontendTransaction.amount,
     reference: frontendTransaction.reference,

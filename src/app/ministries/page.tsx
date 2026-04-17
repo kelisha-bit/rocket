@@ -12,7 +12,7 @@ import {
   UserPlus, Activity, Target
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Ministry, fetchFrontendMinistries, createFrontendMinistry, updateFrontendMinistry, deleteFrontendMinistry } from '@/lib/ministry-adapter';
+import { Ministry, fetchFrontendMinistries, createFrontendMinistry, updateFrontendMinistry, deleteFrontendMinistry, fetchMinistryMemberNames } from '@/lib/ministry-adapter';
 import { fetchMembers, Member } from '@/lib/supabase/members';
 
 const STATUS_LABELS: Record<Ministry['status'], string> = {
@@ -65,6 +65,8 @@ export default function MinistriesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'active' | 'inactive' | 'summary'>('all');
   const [editMode, setEditMode] = useState(false);
+  const [ministryMemberNames, setMinistryMemberNames] = useState<string[]>([]);
+  const [loadingMemberNames, setLoadingMemberNames] = useState(false);
 
   // Fetch ministries from database
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function MinistriesPage() {
         setMinistries(ministries);
       } catch (err) {
         console.error('Failed to load ministries:', err);
-        setError('Failed to load ministries. Please try again.');
+        setError(`Failed to load ministries: ${(err as Error)?.message || 'Please try again.'}`);
       } finally {
         setLoadingMinistries(false);
       }
@@ -107,6 +109,29 @@ export default function MinistriesPage() {
     if (loading) return;
     if (!session) router.push('/sign-up-login-screen');
   }, [useSupabaseAuth, loading, session, router]);
+
+  // Load member names when viewing a ministry
+  useEffect(() => {
+    if (!selected || selected.id === 'new' || editMode) {
+      setMinistryMemberNames([]);
+      return;
+    }
+    let cancelled = false;
+    const loadNames = async () => {
+      try {
+        setLoadingMemberNames(true);
+        const names = await fetchMinistryMemberNames(selected.id);
+        if (!cancelled) setMinistryMemberNames(names);
+      } catch (err) {
+        console.error('Failed to load ministry member names:', err);
+        if (!cancelled) setMinistryMemberNames([]);
+      } finally {
+        if (!cancelled) setLoadingMemberNames(false);
+      }
+    };
+    loadNames();
+    return () => { cancelled = true; };
+  }, [selected?.id, editMode]);
 
   const filteredLeaders = useMemo(() => {
     if (!leaderSearch.trim()) return members;
@@ -996,6 +1021,27 @@ export default function MinistriesPage() {
                     <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600 mb-1">Meeting Time</p>
                     <p className="text-sm font-mono text-foreground">{selected.meetingTime}</p>
                   </div>
+                </div>
+
+                {/* Member list for this ministry */}
+                <div className="mt-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600 mb-2">Ministry Members</p>
+                  {loadingMemberNames ? (
+                    <p className="text-xs text-muted-foreground">Loading members...</p>
+                  ) : ministryMemberNames.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No members assigned to this ministry yet.</p>
+                  ) : (
+                    <div className="max-h-40 overflow-y-auto border border-border rounded-lg bg-white divide-y divide-border">
+                      {ministryMemberNames.map((name, idx) => (
+                        <div key={idx} className="flex items-center gap-2 px-3 py-2">
+                          <div className="w-6 h-6 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white text-[10px] font-bold">
+                            {name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-sm text-foreground">{name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

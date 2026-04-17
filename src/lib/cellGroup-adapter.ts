@@ -9,8 +9,9 @@ export interface CellGroup {
   meetingTime: string;
   location: string;
   members: number;
-  status: 'active' | 'inactive' | 'new';
+  status: 'Active' | 'Needs Attention' | 'active' | 'inactive' | 'new' | string;
   description?: string;
+  zone: string;
 }
 
 // Transform database cell group to frontend format
@@ -25,18 +26,27 @@ export function adaptCellGroupToFrontend(dbCellGroup: DBCellGroup): CellGroup {
     members: dbCellGroup.member_count,
     status: dbCellGroup.status,
     description: dbCellGroup.description,
+    zone: 'Zone A', // Default zone — DB doesn't have a zone column yet
   };
 }
 
 // Transform frontend cell group to database format
 export function adaptCellGroupToDatabase(frontendCellGroup: CellGroup): Partial<DBCellGroup> {
+  // Map frontend status strings to DB enum values
+  const statusMap: Record<string, DBCellGroup['status']> = {
+    Active: 'active',
+    'Needs Attention': 'active',
+    active: 'active',
+    inactive: 'inactive',
+    new: 'new',
+  };
   return {
     name: frontendCellGroup.name,
     description: frontendCellGroup.description,
     meeting_day: frontendCellGroup.meetingDay,
     meeting_time: frontendCellGroup.meetingTime,
     location: frontendCellGroup.location,
-    status: frontendCellGroup.status,
+    status: statusMap[frontendCellGroup.status] ?? 'active',
     member_count: frontendCellGroup.members,
   };
 }

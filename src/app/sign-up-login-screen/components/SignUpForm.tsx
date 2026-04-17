@@ -14,11 +14,7 @@ interface FormValues {
   confirmPassword: string;
 }
 
-interface SignUpFormProps {
-  onSwitchToLogin: () => void;
-}
-
-export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
+export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,12 +44,18 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         return;
       }
 
-      // Demo mode — simulate signup
-      await new Promise(r => setTimeout(r, 1200));
-      toast.success('Account created (demo mode)', {
-        description: 'Redirecting to your profile…',
+      // Demo mode — store credentials in localStorage
+      const existingUsers = JSON.parse(localStorage.getItem('gw_demo_users') || '[]');
+      if (existingUsers.some((u: { email: string }) => u.email === data.email)) {
+        setError('email', { message: 'An account with this email already exists' });
+        return;
+      }
+      existingUsers.push({ fullName: data.fullName, email: data.email, password: data.password });
+      localStorage.setItem('gw_demo_users', JSON.stringify(existingUsers));
+      toast.success('Account created', {
+        description: 'You can now sign in with your credentials.',
       });
-      setTimeout(() => router.push('/profile'), 800);
+      onSwitchToSignIn();
     } catch (e: any) {
       const msg: string = e?.message || 'Sign up failed';
       if (msg.toLowerCase().includes('email')) {
@@ -88,7 +90,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         </p>
         <button
           type="button"
-          onClick={onSwitchToLogin}
+          onClick={onSwitchToSignIn}
           className="w-full flex items-center justify-center gap-2 bg-[#1B4F8A] hover:bg-[#163f6f] text-white font-semibold text-sm py-2.5 rounded-lg transition-all duration-150"
         >
           Back to Sign In
@@ -265,7 +267,7 @@ export default function SignUpForm({ onSwitchToLogin }: SignUpFormProps) {
         Already have an account?{' '}
         <button
           type="button"
-          onClick={onSwitchToLogin}
+          onClick={onSwitchToSignIn}
           className="text-primary font-medium hover:underline"
         >
           Sign in
