@@ -1,10 +1,12 @@
 import { CellGroup as DBCellGroup, fetchCellGroups, createCellGroup, updateCellGroup, deleteCellGroup } from './supabase/cellGroups';
+import { fetchMembers } from './supabase/members';
 
 // Frontend CellGroup interface (from cell-groups/page.tsx)
 export interface CellGroup {
   id: string;
   name: string;
   leader: string;
+  leaderId?: string;
   meetingDay: string;
   meetingTime: string;
   location: string;
@@ -15,18 +17,19 @@ export interface CellGroup {
 }
 
 // Transform database cell group to frontend format
-export function adaptCellGroupToFrontend(dbCellGroup: DBCellGroup): CellGroup {
+export function adaptCellGroupToFrontend(dbCellGroup: DBCellGroup, leaderName?: string): CellGroup {
   return {
     id: dbCellGroup.id,
     name: dbCellGroup.name,
-    leader: '—', // Will be populated from members table later
+    leader: leaderName || dbCellGroup.leader_name || '—',
+    leaderId: dbCellGroup.leader_id,
     meetingDay: dbCellGroup.meeting_day,
     meetingTime: dbCellGroup.meeting_time,
     location: dbCellGroup.location,
     members: dbCellGroup.member_count,
     status: dbCellGroup.status,
     description: dbCellGroup.description,
-    zone: 'Zone A', // Default zone — DB doesn't have a zone column yet
+    zone: (dbCellGroup as any).zone || 'Zone A', // Use DB zone with fallback
   };
 }
 
@@ -54,8 +57,20 @@ export function adaptCellGroupToDatabase(frontendCellGroup: CellGroup): Partial<
 // Fetch cell groups and adapt to frontend format
 export async function fetchFrontendCellGroups(): Promise<CellGroup[]> {
   try {
-    const dbCellGroups = await fetchCellGroups();
-    return dbCellGroups.map(adaptCellGroupToFrontend);
+    const [dbCellGroups, allMembers] = await Promise.all([
+      fetchCellGroups(),
+      fetchMembers(),
+    ]);
+    
+    // Create member lookup map for resolving leader names
+    const memberMap = new Map(allMembers.map(m => [m.id, m.full_name]));
+    
+    return dbCellGroups.map(dbCellGroup => {
+      const leaderName = dbCellGroup.leader_id 
+        ? memberMap.get(dbCellGroup.leader_id) 
+        : undefined;
+      return adaptCellGroupToFrontend(dbCellGroup, leaderName);
+    });
   } catch (error) {
     console.error('Error fetching frontend cell groups:', error);
     throw error;

@@ -10,6 +10,7 @@ import {
 import { Member as FrontendMember, MemberStatus, TitheStatus } from '@/app/member-management/components/memberData';
 import { fetchFrontendMinistries } from './ministry-adapter';
 import { fetchFrontendCellGroups } from './cellGroup-adapter';
+import { getSupabaseErrorMessage, isDuplicateMemberCodeError } from './utils/supabase-errors';
 
 function toIsoDateOrNull(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -49,19 +50,6 @@ function calculateAgeFromDob(dob: string | null | undefined): number {
     age -= 1;
   }
   return Math.max(0, age);
-}
-
-function getSupabaseErrorMessage(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Unknown error';
-  const e = error as { message?: string; details?: string; hint?: string; code?: string };
-  return [e.message, e.details, e.hint, e.code ? `code=${e.code}` : ''].filter(Boolean).join(' | ') || 'Unknown error';
-}
-
-function isDuplicateMemberCodeError(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false;
-  const e = error as { code?: string; message?: string; details?: string };
-  const text = `${e.message || ''} ${e.details || ''}`.toLowerCase();
-  return e.code === '23505' && text.includes('member_code');
 }
 
 function generateMemberCode(): string {

@@ -1,32 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
-import { LayoutDashboard, Users, CalendarDays, HandCoins, Home, ChevronLeft, ChevronRight, Settings, LogOut, BookOpen, UsersRound, FileText, UserCheck } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, HandCoins, Home, ChevronLeft, ChevronRight, Settings, LogOut, BookOpen, UsersRound, FileText, UserCheck, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchFrontendMembers } from '@/lib/member-adapter';
+import { getFrontendUpcomingEvents } from '@/lib/event-adapter';
 
 interface NavItem {
   id: string;
   label: string;
   href: string;
   icon: React.ReactNode;
-  badge?: number;
+  badge?: number | null;
   group: string;
 }
-
-const navItems: NavItem[] = [
-  { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} />, group: 'main' },
-  { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, badge: 3, group: 'main' },
-  { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, group: 'main' },
-  { id: 'nav-member-attendance', label: 'Member Check-in', href: '/member-attendance', icon: <UserCheck size={20} />, group: 'main' },
-  { id: 'nav-reports', label: 'Reports', href: '/reports', icon: <FileText size={20} />, group: 'main' },
-  { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, group: 'ministry' },
-  { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, badge: 2, group: 'ministry' },
-  { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, group: 'ministry' },
-  { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, group: 'ministry' },
-];
 
 interface SidebarProps {
   currentPath?: string;
@@ -34,8 +24,59 @@ interface SidebarProps {
 
 export default function Sidebar({ currentPath = '' }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [newMembersCount, setNewMembersCount] = useState<number | null>(null);
+  const [upcomingEventsCount, setUpcomingEventsCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { signOut, useSupabaseAuth } = useAuth();
+  const { signOut, useSupabaseAuth, user } = useAuth();
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!useSupabaseAuth || !user) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const [members, events] = await Promise.all([
+          fetchFrontendMembers(),
+          getFrontendUpcomingEvents(10),
+        ]);
+        
+        // Count new members this month
+        const now = new Date();
+        const thisMonth = now.toISOString().slice(0, 7); // YYYY-MM
+        const newThisMonth = members.filter(m => {
+          if (!m.joinDate) return false;
+          const iso = m.joinDate.includes('/') 
+            ? `${m.joinDate.split('/')[2]}-${m.joinDate.split('/')[1].padStart(2, '0')}`
+            : m.joinDate.slice(0, 7);
+          return iso === thisMonth;
+        }).length;
+        
+        setNewMembersCount(newThisMonth > 0 ? newThisMonth : null);
+        setUpcomingEventsCount(events.length > 0 ? events.length : null);
+      } catch (err) {
+        console.error('Failed to load sidebar counts:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadCounts();
+  }, [useSupabaseAuth, user]);
+
+  const navItems: NavItem[] = [
+    { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} />, group: 'main' },
+    { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, badge: loading ? null : newMembersCount, group: 'main' },
+    { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, group: 'main' },
+    { id: 'nav-member-attendance', label: 'Member Check-in', href: '/member-attendance', icon: <UserCheck size={20} />, group: 'main' },
+    { id: 'nav-reports', label: 'Reports', href: '/reports', icon: <FileText size={20} />, group: 'main' },
+    { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, group: 'ministry' },
+    { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, badge: loading ? null : upcomingEventsCount, group: 'ministry' },
+    { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, group: 'ministry' },
+    { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, group: 'ministry' },
+    { id: 'nav-profile', label: 'My Profile', href: '/profile', icon: <User size={20} />, group: 'ministry' },
+  ];
 
   return (
     <aside

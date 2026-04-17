@@ -14,6 +14,7 @@ import {
   getFinancialSummary,
   getCategoryBreakdown,
 } from './supabase/transactions';
+import { getSupabaseErrorMessage } from './utils/supabase-errors';
 
 // Frontend Transaction interface (matches the finance page)
 export interface FrontendTransaction {
@@ -29,12 +30,6 @@ export interface FrontendTransaction {
   reference?: string;
   notes?: string;
   recordedBy?: string;
-}
-
-function getSupabaseErrorMessage(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Unknown error';
-  const e = error as { message?: string; details?: string; hint?: string; code?: string };
-  return [e.message, e.details, e.hint, e.code ? `code=${e.code}` : ''].filter(Boolean).join(' | ') || 'Unknown error';
 }
 
 // Transform database transaction to frontend format

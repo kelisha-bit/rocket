@@ -1,11 +1,6 @@
 import { Ministry as DBMinistry, fetchMinistries, createMinistry, updateMinistry, deleteMinistry, fetchMinistryMemberIds } from './supabase/ministries';
 import { fetchMembers } from './supabase/members';
-
-function getSupabaseErrorMessage(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Unknown error';
-  const e = error as { message?: string; details?: string; hint?: string; code?: string };
-  return [e.message, e.details, e.hint, e.code ? `code=${e.code}` : ''].filter(Boolean).join(' | ') || 'Unknown error';
-}
+import { getSupabaseErrorMessage } from './utils/supabase-errors';
 
 function normalizeTimeForDb(value: string): string | undefined {
   const v = (value || '').trim();

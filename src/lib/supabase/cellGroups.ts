@@ -7,11 +7,13 @@ export interface CellGroup {
   name: string;
   description?: string;
   leader_id?: string;
+  leader_name?: string;
   meeting_day: string;
   meeting_time: string;
   location: string;
   status: CellGroupStatus;
   member_count: number;
+  zone?: string;
   created_at: string;
   updated_at: string;
 }
@@ -23,11 +25,13 @@ export function transformCellGroup(dbCellGroup: any): CellGroup {
     name: dbCellGroup.name,
     description: dbCellGroup.description || '',
     leader_id: dbCellGroup.leader_id,
+    leader_name: dbCellGroup.leader_name,
     meeting_day: dbCellGroup.meeting_day || 'Sunday',
     meeting_time: dbCellGroup.meeting_time || '5:00 PM',
     location: dbCellGroup.location || '',
     status: dbCellGroup.status || 'active',
     member_count: dbCellGroup.member_count || 0,
+    zone: dbCellGroup.zone || 'Zone A',
     created_at: dbCellGroup.created_at,
     updated_at: dbCellGroup.updated_at,
   };

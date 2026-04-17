@@ -27,8 +27,11 @@ import {
 } from '@/lib/transaction-adapter';
 
 export default function FinancePage() {
-  const { useSupabaseAuth, loading, session } = useAuth();
+  const { useSupabaseAuth, loading, session, user } = useAuth();
   const router = useRouter();
+  
+  // Get display name from user metadata or email
+  const recordedByName = user?.user_metadata?.full_name || user?.email || 'Staff';
 
   const [query, setQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -177,7 +180,7 @@ export default function FinancePage() {
         const newTransaction: Transaction = {
           ...selected,
           memberId,
-          recordedBy: 'Admin', // TODO: Get from auth context
+          recordedBy: recordedByName,
         };
         
         const createdTransaction = await createFrontendTransaction(newTransaction);
