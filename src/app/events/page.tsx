@@ -78,6 +78,7 @@ const emptyEvent = (): ChurchEvent => ({
   id: 'new', title: '', date: new Date().toISOString().split('T')[0],
   time: '09:00', endDate: null, endTime: null,
   location: '', description: '', status: 'draft',
+  department: 'Church-wide', expectedAttendance: 0,
 });
 
 export default function EventsPage() {
@@ -112,8 +113,8 @@ export default function EventsPage() {
     const q = query.trim().toLowerCase();
     return events
       .filter(e => !statusFilter || e.status === statusFilter)
-      .filter(e => !q || e.title.toLowerCase().includes(q) || e.location.toLowerCase().includes(q) || e.description.toLowerCase().includes(q))
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .filter(e => !q || (e.title ?? '').toLowerCase().includes(q) || (e.location ?? '').toLowerCase().includes(q) || (e.description ?? '').toLowerCase().includes(q))
+      .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   }, [events, query, statusFilter]);
 
   const calendarCells = useMemo(() => {
