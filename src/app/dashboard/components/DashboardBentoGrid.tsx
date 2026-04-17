@@ -10,7 +10,7 @@ import {
 import { useDashboard } from '../context/DashboardContext';
 
 export default function DashboardBentoGrid() {
-  const { data, stats, loading } = useDashboard();
+  const { stats, loading } = useDashboard();
 
   const fmt = (n: number) => n.toLocaleString();
   const fmtCurrency = (n: number) =>

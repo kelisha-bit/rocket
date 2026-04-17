@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { AlertTriangle, Info, CheckCircle, X, Clock, Users, DollarSign, Calendar } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, X, Users, DollarSign, Calendar } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
 
 interface Alert {

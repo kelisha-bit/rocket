@@ -13,19 +13,8 @@ import {
   UsersRound,
   Settings
 } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-const navItems = [
-  { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} />, badge: null },
-  { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, badge: 3 },
-  { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, badge: null },
-  { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, badge: null },
-  { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, badge: 2 },
-  { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, badge: null },
-  { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, badge: null },
-  { id: 'nav-settings', label: 'Settings', href: '/settings', icon: <Settings size={20} />, badge: null },
-];
+import { useDashboard } from '../context/DashboardContext';
 
 interface MobileDashboardNavProps {
   currentPath?: string;
@@ -34,6 +23,18 @@ interface MobileDashboardNavProps {
 export default function MobileDashboardNav({ currentPath = '' }: MobileDashboardNavProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const { stats, data, loading } = useDashboard();
+
+  const navItems = [
+    { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} />, badge: null },
+    { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, badge: loading ? null : stats.newMembersThisMonth > 0 ? stats.newMembersThisMonth : null },
+    { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, badge: null },
+    { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, badge: null },
+    { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, badge: loading ? null : data.upcomingEvents.length > 0 ? data.upcomingEvents.length : null },
+    { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, badge: null },
+    { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, badge: null },
+    { id: 'nav-settings', label: 'Settings', href: '/settings', icon: <Settings size={20} />, badge: null },
+  ];
 
   const handleNavClick = (href: string) => {
     setIsOpen(false);
