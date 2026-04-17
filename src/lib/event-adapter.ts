@@ -1,6 +1,6 @@
 /**
  * Event Adapter
- * Bridges the real DB schema (starts_at / ends_at / description)
+ * Bridges the real DB schema (date / time / notes)
  * to the frontend format used by the events page and dashboard.
  */
 
@@ -32,10 +32,10 @@ export interface FrontendChurchEvent {
   location: string;
   description: string;
   status: EventStatus;
-  /** Optional department/category label (e.g. 'Church-wide', 'Youth') */
-  department?: string;
-  /** Optional expected headcount for the event */
-  expectedAttendance?: number;
+  /** Department/category label (e.g. 'Church-wide', 'Youth') */
+  department: string;
+  /** Expected headcount for the event */
+  expectedAttendance: number;
 }
 
 export type { EventStatus };
@@ -51,39 +51,23 @@ const STATUS_LABELS: Record<EventStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function splitDateTime(iso: string | null): { date: string; time: string } {
-  if (!iso) return { date: '', time: '' };
-  try {
-    const d = new Date(iso);
-    const date = d.toISOString().slice(0, 10);
-    const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    return { date, time };
-  } catch {
-    return { date: '', time: '' };
-  }
-}
-
-function toIso(date: string, time: string): string {
-  if (!date) return new Date().toISOString();
-  const t = time || '00:00';
-  return new Date(`${date}T${t}:00`).toISOString();
-}
+// ── Helpers ─────────────────────────────────────────────────────────────────--
+// No longer needed - DB now has separate date/time columns
 
 // ── Transforms ────────────────────────────────────────────────────────────────
 function toFrontend(db: DBChurchEvent): FrontendChurchEvent {
-  const { date, time } = splitDateTime(db.starts_at);
-  const end = splitDateTime(db.ends_at);
   return {
     id: db.id,
     title: db.title,
-    date,
-    time,
-    endDate: end.date || null,
-    endTime: end.time || null,
+    date: db.date,
+    time: db.time ?? '09:00',
+    endDate: null,  // DB doesn't have end date/time
+    endTime: null,
     location: db.location ?? '',
     description: db.description ?? '',
     status: db.status,
+    department: db.department ?? 'Church-wide',
+    expectedAttendance: db.expected_attendance ?? 0,
   };
 }
 
@@ -92,15 +76,11 @@ function toDB(fe: Partial<FrontendChurchEvent>): Partial<DBChurchEvent> {
   if (fe.title       !== undefined) result.title       = fe.title;
   if (fe.description !== undefined) result.description = fe.description || null;
   if (fe.location    !== undefined) result.location    = fe.location || null;
-  if (fe.status !== undefined) result.status = fe.status;
-  if (fe.date) {
-    result.starts_at = toIso(fe.date, fe.time ?? '00:00');
-  }
-  if (fe.endDate) {
-    result.ends_at = toIso(fe.endDate, fe.endTime ?? '00:00');
-  } else if (fe.endDate === null) {
-    result.ends_at = null;
-  }
+  if (fe.status      !== undefined) result.status      = fe.status;
+  if (fe.date        !== undefined) result.date        = fe.date;
+  if (fe.time        !== undefined) result.time        = fe.time;
+  if (fe.department  !== undefined) result.department  = fe.department;
+  if (fe.expectedAttendance !== undefined) result.expected_attendance = fe.expectedAttendance;
   return result;
 }
 

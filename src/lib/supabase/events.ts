@@ -58,11 +58,14 @@ export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
 export interface ChurchEvent {
   id: string;
   title: string;
-  description: string | null;
+  description: string | null;  // maps to 'notes' column
   location: string | null;
-  starts_at: string;          // timestamptz ISO string
-  ends_at: string | null;     // timestamptz ISO string
+  date: string;                // DATE as ISO string (YYYY-MM-DD)
+  time: string;                // TIME as string (HH:MM)
   status: EventStatus;
+  department: string;          // 'Church-wide' | 'Youth' | 'Women' | 'Men' | 'Children'
+  expected_attendance: number;
+  actual_attendance: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -72,11 +75,14 @@ export function transformEvent(raw: any): ChurchEvent {
   return {
     id: raw.id,
     title: raw.title,
-    description: raw.description ?? null,
+    description: raw.notes ?? raw.description ?? null,  // notes is the DB column
     location: raw.location ?? null,
-    starts_at: raw.starts_at,
-    ends_at: raw.ends_at ?? null,
+    date: raw.date,
+    time: raw.time ?? '09:00',
     status: fromDbStatus(raw.status),
+    department: raw.department ?? 'Church-wide',
+    expected_attendance: raw.expected_attendance ?? 0,
+    actual_attendance: raw.actual_attendance ?? null,
     created_by: raw.created_by ?? null,
     created_at: raw.created_at,
     updated_at: raw.updated_at,
@@ -109,9 +115,10 @@ export async function fetchEventsByDateRange(startDate: string, endDate: string)
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .gte('starts_at', startDate)
-    .lte('starts_at', endDate)
-    .order('starts_at', { ascending: true });
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
   if (error) { console.error('Error fetching events by date range:', error); throw toError(error, 'Error fetching events by date range'); }
   return (data ?? []).map(transformEvent);
 }
@@ -134,11 +141,14 @@ export async function createEvent(eventData: Partial<ChurchEvent>): Promise<Chur
   const supabase = createClient();
   const dbData = {
     title: eventData.title,
-    description: eventData.description ?? null,
+    notes: eventData.description ?? null,  // DB column is 'notes'
     location: eventData.location ?? null,
-    starts_at: eventData.starts_at,
-    ends_at: eventData.ends_at ?? null,
+    date: eventData.date,
+    time: eventData.time ?? '09:00',
     status: toDbStatus(eventData.status ?? 'draft'),
+    department: eventData.department ?? 'Church-wide',
+    expected_attendance: eventData.expected_attendance ?? 0,
+    actual_attendance: eventData.actual_attendance ?? null,
     // created_by omitted — requires a valid UUID from auth
   };
   const { data, error } = await supabase.from('events').insert(dbData).select().single();
@@ -150,10 +160,13 @@ export async function updateEvent(id: string, eventData: Partial<ChurchEvent>): 
   const supabase = createClient();
   const dbData: any = {};
   if (eventData.title      !== undefined) dbData.title       = eventData.title;
-  if (eventData.description !== undefined) dbData.description = eventData.description;
+  if (eventData.description !== undefined) dbData.notes       = eventData.description;  // DB column is 'notes'
   if (eventData.location   !== undefined) dbData.location    = eventData.location;
-  if (eventData.starts_at  !== undefined) dbData.starts_at   = eventData.starts_at;
-  if (eventData.ends_at    !== undefined) dbData.ends_at     = eventData.ends_at;
+  if (eventData.date       !== undefined) dbData.date        = eventData.date;
+  if (eventData.time       !== undefined) dbData.time        = eventData.time;
+  if (eventData.department !== undefined) dbData.department  = eventData.department;
+  if (eventData.expected_attendance !== undefined) dbData.expected_attendance = eventData.expected_attendance;
+  if (eventData.actual_attendance   !== undefined) dbData.actual_attendance   = eventData.actual_attendance;
   if (eventData.status     !== undefined) dbData.status      = toDbStatus(eventData.status);
   const { data, error } = await supabase.from('events').update(dbData).eq('id', id).select().single();
   if (error) { console.error('Error updating event:', error); throw toError(error, 'Error updating event'); }
@@ -168,13 +181,14 @@ export async function deleteEvent(id: string): Promise<void> {
 
 export async function getUpcomingEvents(limit?: number): Promise<ChurchEvent[]> {
   const supabase = createClient();
-  const now = new Date().toISOString();
+  const today = new Date().toISOString().split('T')[0];  // YYYY-MM-DD
   let query = supabase
     .from('events')
     .select('*')
-    .gte('starts_at', now)
+    .gte('date', today)
     .in('status', [toDbStatus('scheduled'), toDbStatus('draft')])
-    .order('starts_at', { ascending: true });
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
   if (limit) query = query.limit(limit);
   const { data, error } = await query;
   if (error) { console.error('Error fetching upcoming events:', error); throw toError(error, 'Error fetching upcoming events'); }
@@ -184,8 +198,8 @@ export async function getUpcomingEvents(limit?: number): Promise<ChurchEvent[]> 
 export async function getEventStatistics(startDate?: string, endDate?: string) {
   const supabase = createClient();
   let query = supabase.from('events').select('status');
-  if (startDate) query = query.gte('starts_at', startDate);
-  if (endDate)   query = query.lte('starts_at', endDate);
+  if (startDate) query = query.gte('date', startDate);
+  if (endDate)   query = query.lte('date', endDate);
   const { data, error } = await query;
   if (error) { console.error('Error fetching event statistics:', error); throw toError(error, 'Error fetching event statistics'); }
   const normalized = (data ?? []).map((e: any) => ({ status: fromDbStatus(e.status) }));
