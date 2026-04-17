@@ -94,7 +94,8 @@ export async function fetchEvents(): Promise<ChurchEvent[]> {
   const { data, error } = await supabase
     .from('events')
     .select('*')
-    .order('starts_at', { ascending: true });
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
   if (error) { console.error('Error fetching events:', error); throw toError(error, 'Error fetching events'); }
   return (data ?? []).map(transformEvent);
 }
@@ -105,7 +106,8 @@ export async function fetchEventsByStatus(status: EventStatus): Promise<ChurchEv
     .from('events')
     .select('*')
     .eq('status', toDbStatus(status))
-    .order('starts_at', { ascending: true });
+    .order('date', { ascending: true })
+    .order('time', { ascending: true });
   if (error) { console.error('Error fetching events by status:', error); throw toError(error, 'Error fetching events by status'); }
   return (data ?? []).map(transformEvent);
 }
