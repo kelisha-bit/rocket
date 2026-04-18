@@ -290,96 +290,98 @@ export default function CertificateManagementContent() {
       {/* Table */}
       {!loading && !error && (
         <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden mt-4">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-4 py-3 text-left">
-                  <input 
-                    type="checkbox" 
-                    checked={selectedIds.size === paginated.length && paginated.length > 0}
-                    onChange={toggleSelectAll}
-                    className="accent-primary"
-                  />
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Certificate #</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Member</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Issued</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginated.map(cert => (
-                <tr key={cert.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[800px]">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-4 py-3 text-left">
                     <input 
                       type="checkbox" 
-                      checked={selectedIds.has(cert.id)}
-                      onChange={() => toggleSelect(cert.id)}
+                      checked={selectedIds.size === paginated.length && paginated.length > 0}
+                      onChange={toggleSelectAll}
                       className="accent-primary"
                     />
-                  </td>
-                  <td className="px-4 py-3 font-medium">{cert.certificateNumber}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <img src={cert.memberPhoto} alt={cert.memberName} className="w-8 h-8 rounded-full object-cover" />
-                      <span>{cert.memberName}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">{formatCertificateType(cert.type)}</td>
-                  <td className="px-4 py-3">{cert.title}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{new Date(cert.issuedDate).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCertificateStatusColor(cert.status)}`}>
-                      {formatCertificateStatus(cert.status)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button 
-                        onClick={() => setPreviewCertificate(cert)}
-                        className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                        title="Preview"
-                      >
-                        <Eye size={16} className="text-blue-600" />
-                      </button>
-                      <button 
-                        onClick={() => handleDownload(cert)}
-                        className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                        title="Download"
-                      >
-                        <Download size={16} className="text-green-600" />
-                      </button>
-                      {cert.status === 'active' && (
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Certificate #</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Member</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Type</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Title</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Issued</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {paginated.map(cert => (
+                  <tr key={cert.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="px-4 py-3">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedIds.has(cert.id)}
+                        onChange={() => toggleSelect(cert.id)}
+                        className="accent-primary"
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-medium">{cert.certificateNumber}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <img src={cert.memberPhoto} alt={cert.memberName} className="w-8 h-8 rounded-full object-cover" />
+                        <span>{cert.memberName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">{formatCertificateType(cert.type)}</td>
+                    <td className="px-4 py-3">{cert.title}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{new Date(cert.issuedDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCertificateStatusColor(cert.status)}`}>
+                        {formatCertificateStatus(cert.status)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <button 
+                          onClick={() => setPreviewCertificate(cert)}
+                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                          title="Preview"
+                        >
+                          <Eye size={16} className="text-blue-600" />
+                        </button>
+                        <button 
+                          onClick={() => handleDownload(cert)}
+                          className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                          title="Download"
+                        >
+                          <Download size={16} className="text-green-600" />
+                        </button>
+                        {cert.status === 'active' && (
+                          <button 
+                            onClick={() => {
+                              setCertificateToRevoke(cert);
+                              setRevokeModalOpen(true);
+                            }}
+                            className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                            title="Revoke"
+                          >
+                            <Ban size={16} className="text-orange-600" />
+                          </button>
+                        )}
                         <button 
                           onClick={() => {
-                            setCertificateToRevoke(cert);
-                            setRevokeModalOpen(true);
+                            setCertificateToDelete(cert);
+                            setDeleteModalOpen(true);
                           }}
                           className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                          title="Revoke"
+                          title="Delete"
                         >
-                          <Ban size={16} className="text-orange-600" />
+                          <Trash2 size={16} className="text-red-600" />
                         </button>
-                      )}
-                      <button 
-                        onClick={() => {
-                          setCertificateToDelete(cert);
-                          setDeleteModalOpen(true);
-                        }}
-                        className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 size={16} className="text-red-600" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           {/* Empty state */}
           {paginated.length === 0 && (

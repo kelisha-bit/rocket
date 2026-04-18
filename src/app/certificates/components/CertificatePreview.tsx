@@ -56,17 +56,17 @@ export default function CertificatePreview({ certificate, onClose }: Certificate
         {/* Modal Container - Hidden in print */}
         <div className="bg-white rounded-xl shadow-modal w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Certificate Preview</h2>
-            <p className="text-sm text-muted-foreground">{certificate.certificateNumber}</p>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border flex-wrap gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold text-foreground truncate">Certificate Preview</h2>
+            <p className="text-sm text-muted-foreground truncate">{certificate.certificateNumber}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button 
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#1B4F8A] rounded-lg hover:bg-[#163f6f] transition-colors"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-white bg-[#1B4F8A] rounded-lg hover:bg-[#163f6f] transition-colors whitespace-nowrap"
             >
-              <Printer size={16} /> Print / Download
+              <Printer size={16} /> <span className="hidden sm:inline">Print / Download</span>
             </button>
             <button 
               onClick={onClose} 

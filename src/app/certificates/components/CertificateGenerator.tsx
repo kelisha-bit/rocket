@@ -109,11 +109,11 @@ export default function CertificateGenerator({ members, onClose, onGenerate }: C
         </div>
 
         {/* Stepper */}
-        <div className="flex items-center gap-2 px-6 py-3 bg-muted/30 border-b border-border overflow-x-auto">
+        <div className="flex items-center gap-1 sm:gap-2 px-4 sm:px-6 py-3 bg-muted/30 border-b border-border overflow-x-auto">
           {steps.map((s, i) => (
             <React.Fragment key={s.id}>
               <div 
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap ${
+                className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap ${
                   step === s.id 
                     ? 'bg-[#1B4F8A] text-white' 
                     : i < currentStepIndex 
@@ -121,11 +121,11 @@ export default function CertificateGenerator({ members, onClose, onGenerate }: C
                       : 'text-muted-foreground'
                 }`}
               >
-                <s.icon size={14} />
-                {s.label}
+                <s.icon size={12} className="sm:size-[14px]" />
+                <span className="hidden xs:inline">{s.label}</span>
               </div>
               {i < steps.length - 1 && (
-                <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+                <ChevronRight size={14} className="text-muted-foreground shrink-0 hidden sm:block" />
               )}
             </React.Fragment>
           ))}
