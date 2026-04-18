@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
@@ -10,90 +10,11 @@ import {
   Clock,
   User,
   Filter,
-  Search
+  Search,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-const recentReports = [
-  {
-    id: 'rpt-001',
-    title: 'April 2026 Monthly Summary',
-    type: 'Executive Summary',
-    generatedBy: 'Pastor John Mensah',
-    generatedAt: '2 hours ago',
-    size: '2.4 MB',
-    format: 'PDF',
-    status: 'Completed',
-    downloads: 12,
-    shared: true,
-    category: 'Executive'
-  },
-  {
-    id: 'rpt-002',
-    title: 'Q1 2026 Financial Report',
-    type: 'Financial Analysis',
-    generatedBy: 'Finance Team',
-    generatedAt: '1 day ago',
-    size: '5.1 MB',
-    format: 'Excel',
-    status: 'Completed',
-    downloads: 8,
-    shared: false,
-    category: 'Financial'
-  },
-  {
-    id: 'rpt-003',
-    title: 'Member Engagement Analysis',
-    type: 'Membership Report',
-    generatedBy: 'Admin User',
-    generatedAt: '2 days ago',
-    size: '1.8 MB',
-    format: 'PDF',
-    status: 'Completed',
-    downloads: 15,
-    shared: true,
-    category: 'Membership'
-  },
-  {
-    id: 'rpt-004',
-    title: 'Weekly Attendance Trends',
-    type: 'Attendance Analysis',
-    generatedBy: 'Secretary Mary',
-    generatedAt: '3 days ago',
-    size: '892 KB',
-    format: 'PDF',
-    status: 'Completed',
-    downloads: 6,
-    shared: false,
-    category: 'Attendance'
-  },
-  {
-    id: 'rpt-005',
-    title: 'Youth Ministry Report',
-    type: 'Ministry Analysis',
-    generatedBy: 'Youth Leader',
-    generatedAt: '5 days ago',
-    size: '3.2 MB',
-    format: 'PowerPoint',
-    status: 'Processing',
-    downloads: 0,
-    shared: false,
-    category: 'Ministry'
-  },
-  {
-    id: 'rpt-006',
-    title: 'Easter Event Summary',
-    type: 'Event Report',
-    generatedBy: 'Events Team',
-    generatedAt: '1 week ago',
-    size: '4.7 MB',
-    format: 'PDF',
-    status: 'Completed',
-    downloads: 23,
-    shared: true,
-    category: 'Events'
-  }
-];
+import { fetchReports, downloadReport, shareReport, ReportData } from '@/lib/report-adapter';
 
 const statusColors = {
   'Completed': 'bg-green-50 text-green-700 border-green-200',
@@ -105,15 +26,35 @@ const formatColors = {
   'PDF': 'bg-red-50 text-red-700',
   'Excel': 'bg-green-50 text-green-700',
   'PowerPoint': 'bg-orange-50 text-orange-700',
-  'Word': 'bg-blue-50 text-blue-700'
+  'Word': 'bg-blue-50 text-blue-700',
+  'TXT': 'bg-gray-50 text-gray-700'
 };
 
 export default function RecentReports() {
+  const [reports, setReports] = useState<ReportData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterCategory, setFilterCategory] = useState('All');
 
-  const filteredReports = recentReports.filter(report => {
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      const reportsData = await fetchReports();
+      setReports(reportsData);
+    } catch (error) {
+      console.error('Error loading reports:', error);
+      toast.error('Failed to load reports');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredReports = reports.filter(report => {
     const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          report.type.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'All' || report.status === filterStatus;
@@ -121,29 +62,106 @@ export default function RecentReports() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const handleDownload = (report: any) => {
-    toast.success('Download Started', { 
-      description: `Downloading ${report.title}...` 
-    });
+  const handleDownload = (report: ReportData) => {
+    try {
+      downloadReport(report);
+      // Update download count
+      setReports(prev => prev.map(r => 
+        r.id === report.id ? { ...r, downloads: r.downloads + 1 } : r
+      ));
+      toast.success('Download Started', { 
+        description: `Downloading ${report.title}...` 
+      });
+    } catch (error) {
+      toast.error('Download Failed', { 
+        description: 'Failed to download report' 
+      });
+    }
   };
 
-  const handleView = (report: any) => {
-    toast.info('Opening Report', { 
-      description: `Viewing ${report.title}...` 
-    });
+  const handleView = (report: ReportData) => {
+    const reportWindow = window.open('', '_blank');
+    if (reportWindow) {
+      reportWindow.document.write(`
+        <html>
+          <head>
+            <title>${report.title}</title>
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
+              .header { border-bottom: 2px solid #1B4F8A; padding-bottom: 15px; margin-bottom: 25px; }
+              .section { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; }
+              .metric { display: inline-block; margin: 10px 15px 10px 0; }
+              .metric-value { font-size: 24px; font-weight: bold; color: #1B4F8A; display: block; }
+              .metric-label { font-size: 12px; color: #666; text-transform: uppercase; }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>${report.title}</h1>
+              <p>${report.description || report.type}</p>
+              <small>Generated: ${new Date(report.generatedAt).toLocaleString()} by ${report.generatedBy}</small>
+            </div>
+            
+            <div class="section">
+              <h2>Report Data</h2>
+              ${Object.entries(report.data).map(([key, value]) => `
+                <div class="metric">
+                  <span class="metric-value">${typeof value === 'number' ? value.toLocaleString() : value}</span>
+                  <span class="metric-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                </div>
+              `).join('')}
+            </div>
+            
+            <div class="section">
+              <h2>Report Information</h2>
+              <p><strong>Status:</strong> ${report.status}</p>
+              <p><strong>Format:</strong> ${report.format}</p>
+              <p><strong>Size:</strong> ${report.size}</p>
+              <p><strong>Downloads:</strong> ${report.downloads}</p>
+              <p><strong>Shared:</strong> ${report.shared ? 'Yes' : 'No'}</p>
+            </div>
+          </body>
+        </html>
+      `);
+      reportWindow.document.close();
+    }
   };
 
-  const handleShare = (report: any) => {
-    toast.success('Report Shared', { 
-      description: `Share link copied to clipboard` 
-    });
+  const handleShare = (report: ReportData) => {
+    try {
+      const shareUrl = shareReport(report);
+      setReports(prev => prev.map(r => 
+        r.id === report.id ? { ...r, shared: true } : r
+      ));
+      toast.success('Report Shared', { 
+        description: 'Share link copied to clipboard' 
+      });
+    } catch (error) {
+      toast.error('Share Failed', { 
+        description: 'Failed to share report' 
+      });
+    }
   };
 
-  const handleDelete = (report: any) => {
-    toast.error('Report Deleted', { 
-      description: `${report.title} has been deleted` 
-    });
+  const handleDelete = (report: ReportData) => {
+    if (confirm(`Are you sure you want to delete "${report.title}"?`)) {
+      setReports(prev => prev.filter(r => r.id !== report.id));
+      toast.success('Report Deleted', { 
+        description: `${report.title} has been deleted` 
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-border shadow-card p-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 size={32} className="animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">Loading reports...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl border border-border shadow-card p-6">
@@ -190,6 +208,7 @@ export default function RecentReports() {
             <option>Attendance</option>
             <option>Ministry</option>
             <option>Events</option>
+            <option>Generated</option>
           </select>
         </div>
       </div>
@@ -255,7 +274,7 @@ export default function RecentReports() {
                 <td className="py-3 px-2">
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock size={12} />
-                    <span>{report.generatedAt}</span>
+                    <span>{new Date(report.generatedAt).toLocaleDateString()}</span>
                   </div>
                 </td>
                 <td className="py-3 px-2">

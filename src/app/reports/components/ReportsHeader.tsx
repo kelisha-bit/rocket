@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Download, 
@@ -9,16 +9,36 @@ import {
   Plus,
   BarChart3,
   TrendingUp,
-  Users
+  Users,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getReportStats, ReportStats } from '@/lib/report-adapter';
 
 export default function ReportsHeader() {
   const [dateRange, setDateRange] = useState('This Month');
   const [reportType, setReportType] = useState('All Reports');
+  const [stats, setStats] = useState<ReportStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const statsData = await getReportStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateReport = () => {
-    toast.info('Report Builder', { description: 'Opening custom report builder...' });
+    // Navigate to report builder
+    window.location.href = '/reports/builder';
   };
 
   const handleBulkExport = () => {
@@ -42,18 +62,31 @@ export default function ReportsHeader() {
         
         {/* Quick Stats */}
         <div className="flex items-center gap-4 mt-3">
-          <div className="flex items-center gap-2 text-sm">
-            <BarChart3 size={16} className="text-green-600" />
-            <span className="text-muted-foreground">47 reports generated</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <TrendingUp size={16} className="text-blue-600" />
-            <span className="text-muted-foreground">+23% this month</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Users size={16} className="text-purple-600" />
-            <span className="text-muted-foreground">12 active users</span>
-          </div>
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <Loader2 size={16} className="animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Loading stats...</span>
+            </div>
+          ) : stats ? (
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                <BarChart3 size={16} className="text-green-600" />
+                <span className="text-muted-foreground">{stats.totalReports} reports generated</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <TrendingUp size={16} className="text-blue-600" />
+                <span className="text-muted-foreground">+{stats.monthlyGrowth}% this month</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Users size={16} className="text-purple-600" />
+                <span className="text-muted-foreground">{stats.activeUsers} active users</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Download size={16} className="text-amber-600" />
+                <span className="text-muted-foreground">{stats.totalDownloads} downloads</span>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
       
