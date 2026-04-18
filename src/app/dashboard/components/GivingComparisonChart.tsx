@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
@@ -29,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function GivingComparisonChart() {
+function GivingComparisonChartComponent() {
   const { data, loading } = useDashboard();
 
   const chartData = useMemo(() => {
@@ -100,3 +100,6 @@ export default function GivingComparisonChart() {
     </div>
   );
 }
+
+const GivingComparisonChart = memo(GivingComparisonChartComponent);
+export default GivingComparisonChart;

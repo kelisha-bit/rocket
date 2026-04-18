@@ -164,26 +164,41 @@ export function useDashboardData() {
       setLoading(true);
       setError(null);
 
-      const [members, transactions, attendance, upcomingEvents, ministries] = await Promise.allSettled([
+      // Phase 1: Load critical data first (members + transactions for metrics)
+      const [membersResult, transactionsResult] = await Promise.allSettled([
         fetchFrontendMembers(),
         fetchFrontendTransactions(),
+      ]);
+
+      const members = membersResult.status === 'fulfilled' ? membersResult.value : [];
+      const transactions = transactionsResult.status === 'fulfilled' ? transactionsResult.value : [];
+
+      // Update UI immediately with critical data
+      setData(prev => ({
+        ...prev,
+        members,
+        transactions,
+      }));
+      setLoading(false); // Show content now
+      setLastRefreshed(new Date());
+
+      // Phase 2: Load secondary data in background
+      const [attendanceResult, eventsResult, ministriesResult] = await Promise.allSettled([
         fetchFrontendAttendanceRecords(),
         getFrontendUpcomingEvents(10),
         fetchFrontendMinistries(),
       ]);
 
       setData({
-        members: members.status === 'fulfilled' ? members.value : [],
-        transactions: transactions.status === 'fulfilled' ? transactions.value : [],
-        attendance: attendance.status === 'fulfilled' ? attendance.value : [],
-        upcomingEvents: upcomingEvents.status === 'fulfilled' ? upcomingEvents.value : [],
-        ministries: ministries.status === 'fulfilled' ? ministries.value : [],
+        members,
+        transactions,
+        attendance: attendanceResult.status === 'fulfilled' ? attendanceResult.value : [],
+        upcomingEvents: eventsResult.status === 'fulfilled' ? eventsResult.value : [],
+        ministries: ministriesResult.status === 'fulfilled' ? ministriesResult.value : [],
       });
-      setLastRefreshed(new Date());
     } catch (err) {
       console.error('Dashboard data load failed:', err);
       setError('Failed to load dashboard data');
-    } finally {
       setLoading(false);
     }
   }, []);

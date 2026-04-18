@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
@@ -34,7 +34,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function KPIComparisonChart() {
+function KPIComparisonChartComponent() {
   const [selectedKPIs, setSelectedKPIs] = useState(['giving', 'attendance']);
   const { data, loading } = useDashboard();
 
@@ -143,3 +143,6 @@ export default function KPIComparisonChart() {
     </div>
   );
 }
+
+const KPIComparisonChart = memo(KPIComparisonChartComponent);
+export default KPIComparisonChart;

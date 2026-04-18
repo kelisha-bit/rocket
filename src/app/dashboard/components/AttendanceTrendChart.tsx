@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
@@ -30,7 +30,7 @@ function formatAttendanceDate(iso: string): string {
   }
 }
 
-export default function AttendanceTrendChart() {
+function AttendanceTrendChartComponent() {
   const { data, loading } = useDashboard();
 
   const chartData = useMemo(() => {
@@ -103,3 +103,6 @@ export default function AttendanceTrendChart() {
     </div>
   );
 }
+
+const AttendanceTrendChart = memo(AttendanceTrendChartComponent);
+export default AttendanceTrendChart;

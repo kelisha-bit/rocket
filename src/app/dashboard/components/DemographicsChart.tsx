@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { Loader2 } from 'lucide-react';
 import { useDashboard } from '../context/DashboardContext';
@@ -42,7 +42,7 @@ function getAge(dob: string): number {
   } catch { return 0; }
 }
 
-export default function DemographicsChart() {
+function DemographicsChartComponent() {
   const [view, setView] = useState<'age' | 'gender' | 'ministry'>('age');
   const { data, loading } = useDashboard();
 
@@ -150,3 +150,6 @@ export default function DemographicsChart() {
     </div>
   );
 }
+
+const DemographicsChart = memo(DemographicsChartComponent);
+export default DemographicsChart;
