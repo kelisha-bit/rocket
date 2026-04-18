@@ -3,12 +3,11 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
 import MetricCard from '@/components/ui/MetricCard';
-import Modal from '@/components/ui/Modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import {
-  Users, UserCheck, UserX, Search, Filter, X, Download,
-  Calendar, ChevronDown, CheckCircle2, XCircle, Clock,
+  Users, UserCheck, UserX, Search, X,
+  Calendar, CheckCircle2, XCircle, Clock,
   BarChart3, List, Save, RefreshCw, TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -21,7 +20,6 @@ import {
   type FrontendMemberAttendance,
   type ServiceType,
 } from '@/lib/member-attendance-adapter';
-import { fetchFrontendMembers } from '@/lib/member-adapter';
 import type { Member } from '@/app/member-management/components/memberData';
 
 type ViewMode = 'summary' | 'session' | 'history';
@@ -107,14 +105,7 @@ export default function MemberAttendancePage() {
     if (!session) router.push('/sign-up-login-screen');
   }, [useSupabaseAuth, loading, session, router]);
 
-  // Load summaries on mount
-  useEffect(() => {
-    if (useSupabaseAuth && (loading || !session)) return;
-    loadSummaries();
-    loadAllMembers();
-  }, [useSupabaseAuth, loading, session]);
-
-  const loadSummaries = async () => {
+  const loadSummaries = useCallback(async () => {
     try {
       setLoadingSummaries(true);
       const data = await fetchFrontendMemberAttendanceSummaries();
@@ -127,16 +118,47 @@ export default function MemberAttendancePage() {
     } finally {
       setLoadingSummaries(false);
     }
-  };
+  }, []);
 
-  const loadAllMembers = async () => {
+  const loadAllMembers = useCallback(async () => {
     try {
-      const members = await fetchFrontendMembers();
-      setAllMembers(members.filter(m => m.status === 'active' || m.status === 'new'));
+      const supabase = (await import('@/lib/supabase/client')).createClient();
+      const { data, error } = await supabase
+        .from('members')
+        .select('id, member_code, full_name, photo_url, status')
+        .in('status', ['active', 'new'])
+        .order('full_name', { ascending: true });
+
+      if (error) throw error;
+
+      // Map to the minimal shape the session view needs
+      const members = (data ?? []).map((m: any) => ({
+        id: m.id,
+        memberId: m.member_code,
+        name: m.full_name,
+        photo: m.photo_url || 'https://i.pravatar.cc/48?img=12',
+        status: m.status,
+        // Unused fields required by the Member type
+        photoAlt: '', phone: '', email: '', gender: 'Male' as const,
+        dob: '', age: 0, titheStatus: 'tithe-none' as const,
+        cellGroup: '—', ministry: '—', ministries: ['—'],
+        joinDate: '', lastAttendance: '—', attendanceRate: 0,
+        totalGiving: 0, address: '', maritalStatus: 'Single' as const,
+        occupation: '', emergencyContact: '', baptised: false,
+        attendanceHistory: [], recentGiving: [],
+      }));
+      setAllMembers(members);
     } catch {
       toast.error('Failed to load members');
     }
-  };
+  }, []);
+
+  // Load summaries on mount
+  useEffect(() => {
+    if (useSupabaseAuth && (loading || !session)) return;
+    loadSummaries();
+    loadAllMembers();
+  }, [useSupabaseAuth, loading, session, loadSummaries, loadAllMembers]);
 
   const loadSessionAttendance = useCallback(async () => {
     if (!sessionDate || !sessionService) return;
@@ -160,7 +182,7 @@ export default function MemberAttendancePage() {
     if (viewMode === 'session' && allMembers.length > 0) {
       loadSessionAttendance();
     }
-  }, [viewMode, sessionDate, sessionService, allMembers.length]);
+  }, [viewMode, sessionDate, sessionService, allMembers.length, loadSessionAttendance]);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -222,15 +244,20 @@ export default function MemberAttendancePage() {
     const q = summaryQuery.trim().toLowerCase();
     return summaries
       .filter(s => !summaryStatusFilter || s.memberStatus === summaryStatusFilter)
-      .filter(s => !q || s.fullName.toLowerCase().includes(q) || s.memberCode.toLowerCase().includes(q));
+      .filter(s => {
+        if (!q) return true;
+        const name = (s.fullName ?? '').toLowerCase();
+        const code = (s.memberCode ?? '').toLowerCase();
+        return name.includes(q) || code.includes(q);
+      });
   }, [summaries, summaryQuery, summaryStatusFilter]);
 
   const filteredSessionMembers = useMemo(() => {
     const q = sessionQuery.trim().toLowerCase();
     if (!q) return allMembers;
     return allMembers.filter(m =>
-      m.name.toLowerCase().includes(q) ||
-      m.memberId.toLowerCase().includes(q)
+      (m.name ?? '').toLowerCase().includes(q) ||
+      (m.memberId ?? '').toLowerCase().includes(q)
     );
   }, [allMembers, sessionQuery]);
 
@@ -238,9 +265,9 @@ export default function MemberAttendancePage() {
     const q = historyQuery.trim().toLowerCase();
     if (!q) return historyRecords;
     return historyRecords.filter(r =>
-      r.fullName.toLowerCase().includes(q) ||
-      r.memberCode.toLowerCase().includes(q) ||
-      r.date.includes(q)
+      (r.fullName ?? '').toLowerCase().includes(q) ||
+      (r.memberCode ?? '').toLowerCase().includes(q) ||
+      (r.date ?? '').includes(q)
     );
   }, [historyRecords, historyQuery]);
 
@@ -257,8 +284,8 @@ export default function MemberAttendancePage() {
   }, [summaries]);
 
   const sessionPresentCount = useMemo(
-    () => filteredSessionMembers.filter(m => sessionAttendance[m.id]).length,
-    [filteredSessionMembers, sessionAttendance]
+    () => allMembers.filter(m => sessionAttendance[m.id]).length,
+    [allMembers, sessionAttendance]
   );
 
   if (useSupabaseAuth && (loading || !session)) return null;
@@ -495,7 +522,7 @@ export default function MemberAttendancePage() {
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {loadingSession
                       ? 'Loading...'
-                      : `${sessionPresentCount} / ${filteredSessionMembers.length} present`}
+                      : `${sessionPresentCount} / ${allMembers.length} present${sessionQuery ? ` (showing ${filteredSessionMembers.length} filtered)` : ''}`}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -532,12 +559,12 @@ export default function MemberAttendancePage() {
               </div>
 
               {/* Progress bar */}
-              {!loadingSession && filteredSessionMembers.length > 0 && (
+              {!loadingSession && allMembers.length > 0 && (
                 <div className="mt-3">
                   <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all"
-                      style={{ width: `${(sessionPresentCount / filteredSessionMembers.length) * 100}%` }}
+                      style={{ width: `${(sessionPresentCount / allMembers.length) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -575,7 +602,7 @@ export default function MemberAttendancePage() {
                         {present && <CheckCircle2 size={18} className="text-white" />}
                       </div>
                       <img
-                        src={member.photo}
+                        src={member.photo || 'https://i.pravatar.cc/48?img=12'}
                         alt={member.name}
                         className="w-9 h-9 rounded-full object-cover border border-gray-200 flex-shrink-0"
                       />

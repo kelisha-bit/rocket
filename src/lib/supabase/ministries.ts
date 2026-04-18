@@ -35,8 +35,10 @@ export function transformMinistry(dbMinistry: any): Ministry {
 export async function fetchMinistries(): Promise<Ministry[]> {
   const supabase = createClient();
 
-  // Fetch ministries with leader info
-  const { data, error } = await supabase
+  // Try fetching with leader join first; fall back to plain select if the FK doesn't exist
+  let data: any[] | null = null;
+
+  const { data: joinData, error: joinError } = await supabase
     .from('ministries')
     .select(`
       *,
@@ -44,9 +46,21 @@ export async function fetchMinistries(): Promise<Ministry[]> {
     `)
     .order('name', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching ministries:', error);
-    throw new Error(`DB error (${error.code}): ${error.message}${error.hint ? ' — ' + error.hint : ''}`);
+  if (joinError) {
+    // FK join failed — fall back to a plain select without the join
+    console.warn('Ministry head join failed, falling back to plain select:', joinError.message);
+    const { data: plainData, error: plainError } = await supabase
+      .from('ministries')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (plainError) {
+      console.error('Error fetching ministries:', plainError);
+      throw new Error(`DB error (${plainError.code}): ${plainError.message}${plainError.hint ? ' — ' + plainError.hint : ''}`);
+    }
+    data = plainData;
+  } else {
+    data = joinData;
   }
 
   if (!data || data.length === 0) return [];

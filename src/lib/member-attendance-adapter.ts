@@ -56,21 +56,21 @@ function toFrontend(db: MemberAttendanceWithDetails): FrontendMemberAttendance {
     present: db.present,
     notes: db.notes,
     checkedInAt: db.checked_in_at,
-    fullName: db.full_name,
-    memberCode: db.member_code,
-    photoUrl: db.photo_url,
+    fullName: db.full_name ?? '',
+    memberCode: db.member_code ?? '',
+    photoUrl: db.photo_url || 'https://i.pravatar.cc/48?img=12',
     gender: db.gender,
-    memberStatus: db.member_status,
+    memberStatus: db.member_status ?? '',
   };
 }
 
 function summaryToFrontend(db: MemberAttendanceSummary): FrontendMemberAttendanceSummary {
   return {
     memberId: db.member_id,
-    fullName: db.full_name,
-    memberCode: db.member_code,
-    photoUrl: db.photo_url,
-    memberStatus: db.member_status,
+    fullName: db.full_name ?? '',
+    memberCode: db.member_code ?? '',
+    photoUrl: db.photo_url || 'https://i.pravatar.cc/48?img=12',
+    memberStatus: db.member_status ?? '',
     totalSessions: db.total_sessions,
     sessionsAttended: db.sessions_attended,
     attendanceRate: db.attendance_rate,
