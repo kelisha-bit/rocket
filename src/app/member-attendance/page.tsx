@@ -205,7 +205,7 @@ export default function MemberAttendancePage() {
 
   useEffect(() => {
     if (viewMode === 'history') loadHistory();
-  }, [viewMode, historyService, historyDateFrom, historyDateTo]);
+  }, [viewMode, loadHistory]);
 
   const toggleMemberPresent = (memberId: string) => {
     setSessionAttendance(prev => ({ ...prev, [memberId]: !prev[memberId] }));

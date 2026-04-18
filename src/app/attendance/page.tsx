@@ -95,7 +95,7 @@ export default function AttendancePage() {
     // Calculate trend (compare last 2 records)
     const lastRecord = filtered[0];
     const previousRecord = filtered[1];
-    const trend = lastRecord && previousRecord ? 
+    const trend = lastRecord && previousRecord && previousRecord.total > 0 ? 
       ((lastRecord.total - previousRecord.total) / previousRecord.total) * 100 : 0;
     
     // Demographics
@@ -631,7 +631,7 @@ export default function AttendancePage() {
                       <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
-                          style={{ width: `${(item.total / metrics.totalAttendance) * 100}%` }}
+                          style={{ width: `${metrics.totalAttendance > 0 ? (item.total / metrics.totalAttendance) * 100 : 0}%` }}
                         />
                       </div>
                     </div>
@@ -662,7 +662,7 @@ export default function AttendancePage() {
                         </div>
                         <div>
                           <p className="text-sm font-bold text-foreground">{item.label}</p>
-                          <p className="text-xs text-muted-foreground">{((item.value / metrics.totalAttendance) * 100).toFixed(1)}% of total</p>
+                          <p className="text-xs text-muted-foreground">{metrics.totalAttendance > 0 ? ((item.value / metrics.totalAttendance) * 100).toFixed(1) : '0.0'}% of total</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -672,7 +672,7 @@ export default function AttendancePage() {
                     <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                       <div 
                         className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-500`}
-                        style={{ width: `${(item.value / metrics.totalAttendance) * 100}%` }}
+                        style={{ width: `${metrics.totalAttendance > 0 ? (item.value / metrics.totalAttendance) * 100 : 0}%` }}
                       />
                     </div>
                   </div>
@@ -753,7 +753,7 @@ export default function AttendancePage() {
               <p className="text-blue-100 text-sm font-medium mb-1">First Timers & Visitors</p>
               <p className="text-3xl font-bold mb-2">{metrics.totalFirstTimers.toLocaleString()}</p>
               <p className="text-blue-100 text-xs">
-                {metrics.totalVisitors} visitors • {((metrics.totalFirstTimers / metrics.totalAttendance) * 100).toFixed(1)}% of total
+                {metrics.totalVisitors} visitors • {metrics.totalAttendance > 0 ? ((metrics.totalFirstTimers / metrics.totalAttendance) * 100).toFixed(1) : '0.0'}% of total
               </p>
             </div>
           </div>
@@ -946,19 +946,19 @@ export default function AttendancePage() {
                       <p className="text-2xl mb-1">👨</p>
                       <p className="text-2xl font-bold text-blue-700">{selected.men}</p>
                       <p className="text-xs text-blue-600 font-semibold">Men</p>
-                      <p className="text-xs text-gray-500 mt-1">{((selected.men / selected.total) * 100).toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{selected.total > 0 ? ((selected.men / selected.total) * 100).toFixed(1) : '0.0'}%</p>
                     </div>
                     <div className="bg-pink-50 rounded-xl p-4 border-2 border-pink-200">
                       <p className="text-2xl mb-1">👩</p>
                       <p className="text-2xl font-bold text-pink-700">{selected.women}</p>
                       <p className="text-xs text-pink-600 font-semibold">Women</p>
-                      <p className="text-xs text-gray-500 mt-1">{((selected.women / selected.total) * 100).toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{selected.total > 0 ? ((selected.women / selected.total) * 100).toFixed(1) : '0.0'}%</p>
                     </div>
                     <div className="bg-amber-50 rounded-xl p-4 border-2 border-amber-200">
                       <p className="text-2xl mb-1">👶</p>
                       <p className="text-2xl font-bold text-amber-700">{selected.children}</p>
                       <p className="text-xs text-amber-600 font-semibold">Children</p>
-                      <p className="text-xs text-gray-500 mt-1">{((selected.children / selected.total) * 100).toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mt-1">{selected.total > 0 ? ((selected.children / selected.total) * 100).toFixed(1) : '0.0'}%</p>
                     </div>
                   </div>
                 </div>
