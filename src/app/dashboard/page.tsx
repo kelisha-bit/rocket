@@ -81,49 +81,51 @@ export default function DashboardPage() {
     <DashboardProvider>
       <MobileDashboardNav currentPath="/dashboard" />
       <AppLayout currentPath="/dashboard">
-        <DashboardHeader />
-        
-        {/* Metric Cards */}
-        <DashboardBentoGrid />
+        <div className="pb-6">
+          <DashboardHeader />
+          
+          {/* Metric Cards */}
+          <DashboardBentoGrid />
 
-        {/* Quick Actions & Alerts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-          <QuickActionsWidget />
-          <AlertsWidget />
-        </div>
+          {/* Quick Actions & Alerts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+            <QuickActionsWidget />
+            <AlertsWidget />
+          </div>
 
-        {/* KPI Trends Chart */}
-        <div className="mt-5">
-          <KPIComparisonChart />
-        </div>
+          {/* KPI Trends Chart */}
+          <div className="mt-5">
+            <KPIComparisonChart />
+          </div>
 
-        {/* Charts row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5">
-          <div className="lg:col-span-2">
-            <AttendanceTrendChart />
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5">
+            <div className="lg:col-span-2">
+              <AttendanceTrendChart />
+            </div>
+            <div className="lg:col-span-1">
+              <DemographicsChart />
+            </div>
           </div>
-          <div className="lg:col-span-1">
-            <DemographicsChart />
-          </div>
-        </div>
 
-        {/* Giving chart + birthday */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5">
-          <div className="lg:col-span-2">
-            <GivingComparisonChart />
+          {/* Giving chart + birthday */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5">
+            <div className="lg:col-span-2">
+              <GivingComparisonChart />
+            </div>
+            <div className="lg:col-span-1">
+              <BirthdayWidget />
+            </div>
           </div>
-          <div className="lg:col-span-1">
-            <BirthdayWidget />
-          </div>
-        </div>
 
-        {/* Table + events */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5 mb-6">
-          <div className="lg:col-span-2">
-            <RecentGivingTable />
-          </div>
-          <div className="lg:col-span-1">
-            <UpcomingEvents />
+          {/* Table + events */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 gap-5 mt-5">
+            <div className="lg:col-span-2">
+              <RecentGivingTable />
+            </div>
+            <div className="lg:col-span-1">
+              <UpcomingEvents />
+            </div>
           </div>
         </div>
       </AppLayout>

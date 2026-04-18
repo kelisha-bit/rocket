@@ -70,11 +70,11 @@ export default function MobileDashboardNav({ currentPath = '' }: MobileDashboard
       )}
 
       {/* Mobile Navigation Drawer */}
-      <div className={`lg:hidden fixed top-0 left-0 h-full w-80 bg-[#1B4F8A] text-white z-50 transform transition-transform duration-300 ease-in-out ${
+      <div className={`lg:hidden fixed top-0 left-0 h-full w-full max-w-80 bg-[#1B4F8A] text-white z-50 transform transition-transform duration-300 ease-in-out safe-area-inset ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
               <LayoutDashboard size={16} className="text-white" />
@@ -93,7 +93,7 @@ export default function MobileDashboardNav({ currentPath = '' }: MobileDashboard
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-2 mobile-scroll-optimized">
           <p className="text-white/30 text-xs font-semibold uppercase tracking-widest mb-3">
             Navigation
           </p>
@@ -120,7 +120,7 @@ export default function MobileDashboardNav({ currentPath = '' }: MobileDashboard
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 shrink-0">
           <div className="text-center">
             <p className="text-white/50 text-xs">
               Greater Works City Church
