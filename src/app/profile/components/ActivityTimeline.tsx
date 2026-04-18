@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { Calendar, DollarSign, Users, Award } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Calendar, DollarSign, Users, Award, Loader2 } from 'lucide-react';
+import { fetchUserActivity, fetchUserAchievements, UserActivity } from '@/lib/supabase/userActivity';
 
 interface Activity {
   id: string;
@@ -13,50 +14,74 @@ interface Activity {
 }
 
 interface ActivityTimelineProps {
-  activities?: Activity[];
+  userId?: string;
+  memberId?: string;
 }
 
-export default function ActivityTimeline({ activities }: ActivityTimelineProps) {
-  // Mock activities if none provided
+export default function ActivityTimeline({ userId, memberId }: ActivityTimelineProps) {
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    const loadActivities = async () => {
+      try {
+        setLoading(true);
+        const [userActivities, achievements] = await Promise.all([
+          fetchUserActivity(userId, memberId),
+          fetchUserAchievements(memberId)
+        ]);
+
+        // Combine and format activities
+        const allActivities: Activity[] = [
+          ...userActivities.map(ua => ({
+            id: ua.id,
+            type: ua.type,
+            title: ua.title,
+            description: ua.amount 
+              ? `${ua.description} - GH₵ ${ua.amount.toLocaleString()}`
+              : ua.description,
+            date: ua.date,
+          })),
+          ...achievements.map(a => ({
+            id: a.id,
+            type: a.type as 'achievement',
+            title: a.title,
+            description: a.description,
+            date: a.date,
+          }))
+        ];
+
+        // Sort by date descending
+        allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setActivities(allActivities.slice(0, 10));
+      } catch (err) {
+        console.error('Failed to load activities:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivities();
+  }, [userId, memberId]);
+
+  // Default fallback activities if no data
   const defaultActivities: Activity[] = [
     {
       id: '1',
       type: 'attendance',
-      title: 'Attended Sunday Service',
-      description: 'Main sanctuary worship service',
-      date: '2026-04-13',
-    },
-    {
-      id: '2',
-      type: 'giving',
-      title: 'Tithe Contribution',
-      description: 'Monthly tithe - GH₵ 850',
-      date: '2026-04-13',
-    },
-    {
-      id: '3',
-      type: 'ministry',
-      title: 'Worship Team Practice',
-      description: 'Weekly rehearsal session',
-      date: '2026-04-10',
-    },
-    {
-      id: '4',
-      type: 'achievement',
-      title: 'Completed Bible Study',
-      description: 'Book of Romans study series',
-      date: '2026-04-05',
-    },
-    {
-      id: '5',
-      type: 'attendance',
-      title: 'Cell Group Meeting',
-      description: 'Bethel Cell - Dansoman',
-      date: '2026-04-03',
+      title: 'Welcome to Greater Works',
+      description: 'Your activity will appear here as you participate',
+      date: new Date().toISOString().split('T')[0],
     },
   ];
 
-  const displayActivities = activities || defaultActivities;
+  const displayActivities = activities.length > 0 ? activities : defaultActivities;
 
   const getActivityIcon = (type: Activity['type']) => {
     switch (type) {
@@ -91,6 +116,11 @@ export default function ActivityTimeline({ activities }: ActivityTimelineProps) 
   return (
     <div className="bg-white rounded-xl shadow border border-border p-6">
       <h2 className="text-lg font-semibold text-foreground mb-4">Recent Activity</h2>
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      ) : (
       <div className="space-y-4">
         {displayActivities.map((activity, index) => {
           const Icon = activity.icon || getActivityIcon(activity.type);
@@ -124,6 +154,7 @@ export default function ActivityTimeline({ activities }: ActivityTimelineProps) 
           );
         })}
       </div>
+      )}
       <button className="w-full mt-4 text-sm text-primary hover:text-primary/80 font-medium transition-colors">
         View All Activity
       </button>

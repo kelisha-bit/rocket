@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, MapPin, Calendar, Camera, Save, X, Edit2 } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, Camera, Save, X, Edit2, Lock, Bell, Shield, X as CloseIcon } from 'lucide-react';
 import AppImage from '@/components/ui/AppImage';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -14,6 +14,7 @@ import ProfileStats from './components/ProfileStats';
 import MinistryInvolvement from './components/MinistryInvolvement';
 import ActivityTimeline from './components/ActivityTimeline';
 import QuickActions from './components/QuickActions';
+import PasswordChangeModal from './components/PasswordChangeModal';
 
 interface UserProfile {
   id: string;
@@ -44,6 +45,10 @@ export default function ProfilePage() {
   const [ministriesCount, setMinistriesCount] = useState(0);
   const [memberStats, setMemberStats] = useState({ attendanceRate: 0, totalGiving: 0 });
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -248,6 +253,34 @@ export default function ProfilePage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    if (!useSupabaseAuth || !user) {
+      toast.error('Please sign in to change password');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success('Password changed successfully');
+      setShowPasswordModal(false);
+    } catch (error) {
+      console.error('Error changing password:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to change password';
+      toast.error('Failed to change password', { description: errorMessage });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -554,7 +587,7 @@ export default function ProfilePage() {
           {/* Right Column - Additional Info */}
           <div className="space-y-6">
             <MinistryInvolvement userId={profile.id} />
-            <ActivityTimeline />
+            <ActivityTimeline userId={profile.id} memberId={profile.member_id} />
             <QuickActions
               onSignOut={async () => {
                 if (useSupabaseAuth && signOut) {
@@ -573,18 +606,24 @@ export default function ProfilePage() {
             <h2 className="text-lg font-semibold text-foreground mb-4">Account Security</h2>
             <div className="space-y-3">
               <button
-                onClick={() => toast.info('Password change', { description: 'Password change feature coming soon' })}
-                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-3"
               >
-                <p className="text-sm font-medium text-foreground">Change Password</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Update your password</p>
+                <Lock size={18} className="text-primary" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Change Password</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Update your password</p>
+                </div>
               </button>
               <button
                 onClick={() => toast.info('2FA', { description: 'Two-factor authentication coming soon' })}
-                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
+                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-3"
               >
-                <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security</p>
+                <Shield size={18} className="text-green-600" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Add an extra layer of security</p>
+                </div>
               </button>
             </div>
           </div>
@@ -594,22 +633,37 @@ export default function ProfilePage() {
             <h2 className="text-lg font-semibold text-foreground mb-4">Preferences</h2>
             <div className="space-y-3">
               <button
-                onClick={() => toast.info('Notifications', { description: 'Notification settings coming soon' })}
-                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setShowNotificationModal(true)}
+                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-3"
               >
-                <p className="text-sm font-medium text-foreground">Notification Settings</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Manage your notifications</p>
+                <Bell size={18} className="text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Notification Settings</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Manage your notifications</p>
+                </div>
               </button>
               <button
-                onClick={() => toast.info('Privacy', { description: 'Privacy settings coming soon' })}
-                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors"
+                onClick={() => setShowPrivacyModal(true)}
+                className="w-full text-left px-4 py-3 border border-border rounded-lg hover:bg-muted transition-colors flex items-center gap-3"
               >
-                <p className="text-sm font-medium text-foreground">Privacy Settings</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Control your privacy</p>
+                <Shield size={18} className="text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Privacy Settings</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Control your privacy</p>
+                </div>
               </button>
             </div>
           </div>
         </div>
+
+        {/* Password Change Modal */}
+        {showPasswordModal && (
+          <PasswordChangeModal
+            onClose={() => setShowPasswordModal(false)}
+            onSubmit={handleChangePassword}
+            isLoading={changingPassword}
+          />
+        )}
       </div>
     </div>
   );
