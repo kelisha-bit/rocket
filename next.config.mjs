@@ -2,7 +2,8 @@ import { imageHosts } from './image-hosts.config.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  productionBrowserSourceMaps: true,
+  // Disable source maps in production for faster builds and smaller bundles
+  productionBrowserSourceMaps: false,
   distDir: process.env.DIST_DIR || '.next',
   typescript: {
     ignoreBuildErrors: true,
@@ -10,9 +11,19 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Enable compression for faster asset delivery
+  compress: true,
+  // Optimize bundle by removing unused code
+  swcMinify: true,
+  // Improve page load performance
+  experimental: {
+    // Optimize package imports for common libraries
+    optimizePackageImports: ['lucide-react', '@heroicons/react', 'recharts'],
+  },
   images: {
     remotePatterns: imageHosts,
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 86400, // Increase cache to 24 hours for better performance
+    formats: ['image/webp', 'image/avif'], // Prioritize modern formats
   },
   async redirects() {
     return [
@@ -48,23 +59,45 @@ const nextConfig = {
           },
         ],
       },
+      // Add long-term caching for static assets
+      {
+        source: '/icons/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/screenshots/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
     ];
   },
 
   webpack(
     config,
     {
-      dev: dev
+      dev,
+      isServer
     }
   ) {
-    config.module.rules.push({
-      test: /\.(jsx|tsx)$/,
-      exclude: [/node_modules/],
-      use: [{
-        loader: '@dhiwise/component-tagger/nextLoader',
-      }],
-    });
+    // Only add component tagger in development
     if (dev) {
+      config.module.rules.push({
+        test: /\.(jsx|tsx)$/,
+        exclude: [/node_modules/],
+        use: [{
+          loader: '@dhiwise/component-tagger/nextLoader',
+        }],
+      });
+
       const ignoredPaths = (process.env.WATCH_IGNORED_PATHS || '')
         .split(',')
         .map((p) => p.trim())
@@ -75,6 +108,12 @@ const nextConfig = {
           : undefined,
       };
     }
+
+    // Exclude heavy libraries from server bundle if not needed
+    if (isServer) {
+      config.externals = [...(config.externals || []), 'recharts'];
+    }
+
     return config;
   },
 };
