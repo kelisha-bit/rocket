@@ -433,7 +433,7 @@ export default function SettingsPage() {
       autoBackup,
       debugMode,
       org: rows.find(r => r.id === 'org-1')?.value as string || '—',
-      profile: useSupabaseAuth ? (user?.email || 'Account') : 'Demo Admin',
+      profile: useSupabaseAuth ? (user?.email || 'Account') : 'Admin',
       warningCount: rows.filter(r => r.warning && !r.value).length,
     };
   }, [rows, useSupabaseAuth, user]);

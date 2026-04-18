@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,11 +26,6 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/dashboard';
   const { signIn } = useAuth();
-
-  // Remove any lingering demo user data from localStorage
-  useEffect(() => {
-    localStorage.removeItem('gw_demo_users');
-  }, []);
 
   const {
     register,
