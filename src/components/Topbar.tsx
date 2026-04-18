@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Bell, Search, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, Search, ChevronDown, User } from 'lucide-react';
 import AppImage from '@/components/ui/AppImage';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { createClient } from '@/lib/supabase/client';
 
 const notificationsSeed = [
   { id: 'notif-1', text: '3 new members registered today', time: '2 min ago', unread: true },
@@ -13,17 +14,8 @@ const notificationsSeed = [
   { id: 'notif-3', text: 'Tithe entry by Finance Officer', time: '3 hrs ago', unread: false },
 ];
 
-// Generate avatar URL from user metadata or fallback
-const getAvatarUrl = (user: any, useSupabaseAuth: boolean): string => {
-  if (!useSupabaseAuth || !user) {
-    return 'https://i.pravatar.cc/32?img=12';
-  }
-  // Use avatar from user_metadata if available
-  if (user.user_metadata?.avatar_url) {
-    return user.user_metadata.avatar_url;
-  }
-  // Generate deterministic avatar based on email hash
-  const email = user.email || 'user';
+// Generate fallback avatar based on email hash
+const getFallbackAvatarUrl = (email: string): string => {
   let hash = 0;
   for (let i = 0; i < email.length; i++) {
     hash = ((hash << 5) - hash) + email.charCodeAt(i);
@@ -37,12 +29,39 @@ export default function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [notifications, setNotifications] = useState(notificationsSeed);
+  const [avatarUrl, setAvatarUrl] = useState('https://i.pravatar.cc/32?img=12');
   const router = useRouter();
   const { user, signOut, useSupabaseAuth } = useAuth();
 
   const displayName = useSupabaseAuth ? (user?.user_metadata?.full_name || user?.email || 'Account') : 'Ps. Emmanuel Asante';
   const displayRole = useSupabaseAuth ? (user?.user_metadata?.role || 'Staff') : 'Pastor / Admin';
-  const avatarUrl = getAvatarUrl(user, useSupabaseAuth);
+
+  // Fetch avatar from user_profiles table
+  useEffect(() => {
+    if (!useSupabaseAuth || !user) {
+      setAvatarUrl('https://i.pravatar.cc/32?img=12');
+      return;
+    }
+
+    const fetchAvatar = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('user_profiles')
+        .select('avatar_url')
+        .eq('id', user.id)
+        .single();
+
+      if (data?.avatar_url) {
+        setAvatarUrl(data.avatar_url);
+      } else if (user.user_metadata?.avatar_url) {
+        setAvatarUrl(user.user_metadata.avatar_url);
+      } else {
+        setAvatarUrl(getFallbackAvatarUrl(user.email || 'user'));
+      }
+    };
+
+    fetchAvatar();
+  }, [user, useSupabaseAuth]);
 
   return (
     <header className="h-14 bg-white border-b border-border flex items-center justify-between px-6 shrink-0 z-10">

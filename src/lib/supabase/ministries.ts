@@ -194,21 +194,70 @@ export async function fetchMinistryMemberIds(ministryId: string): Promise<string
 // Fetch ministries for a specific member (via member_ministries junction table)
 export async function fetchMemberMinistries(memberId: string): Promise<Ministry[]> {
   const supabase = createClient();
+
+  // Try the implicit join first (requires FK relationship in schema)
   const { data, error } = await supabase
     .from('member_ministries')
     .select('ministry_id, ministries(*)')
     .eq('member_id', memberId);
 
-  if (error) {
-    console.error('Error fetching member ministries:', error);
-    throw error;
+  if (!error) {
+    if (!data || data.length === 0) return [];
+    return data
+      .filter((r: any) => r.ministries)
+      .map((r: any) => transformMinistry(r.ministries));
   }
 
-  if (!data || data.length === 0) return [];
+  // Fallback: FK relationship not available, do manual two-step query
+  console.warn('FK join failed, using fallback query:', error.message);
 
-  return data
-    .filter((r: any) => r.ministries)
-    .map((r: any) => transformMinistry(r.ministries));
+  // Step 1: Get ministry IDs from junction table
+  const { data: junctionData, error: junctionError } = await supabase
+    .from('member_ministries')
+    .select('ministry_id')
+    .eq('member_id', memberId);
+
+  if (junctionError) {
+    console.error('Error fetching member ministry IDs:', JSON.stringify(junctionError, null, 2));
+    return []; // Graceful fallback - return empty array
+  }
+
+  if (!junctionData || junctionData.length === 0) return [];
+
+  const ministryIds = junctionData.map((r: any) => r.ministry_id).filter(Boolean);
+  if (ministryIds.length === 0) return [];
+
+  // Step 2: Fetch ministry details
+  const { data: ministriesData, error: ministriesError } = await supabase
+    .from('ministries')
+    .select('*')
+    .in('id', ministryIds);
+
+  if (ministriesError) {
+    console.error('Error fetching ministry details:', JSON.stringify(ministriesError, null, 2));
+    return [];
+  }
+
+  if (!ministriesData) return [];
+
+  // Get member counts
+  let countMap: Record<string, number> = {};
+  try {
+    const { data: countRows } = await supabase
+      .from('member_ministries')
+      .select('ministry_id');
+    if (countRows) {
+      for (const row of countRows) {
+        if (row.ministry_id) {
+          countMap[row.ministry_id] = (countMap[row.ministry_id] || 0) + 1;
+        }
+      }
+    }
+  } catch {
+    // counts stay 0
+  }
+
+  return ministriesData.map(m => transformMinistry({ ...m, _member_count: countMap[m.id] ?? 0 }));
 }
 
 // Search ministries by name or location

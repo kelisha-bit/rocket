@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { fetchMemberMinistries } from '@/lib/supabase/ministries';
 import { fetchMemberById, fetchMemberByEmail } from '@/lib/supabase/members';
+import { uploadMemberPhoto } from '@/lib/supabase/storage';
 import ProfileStats from './components/ProfileStats';
 import MinistryInvolvement from './components/MinistryInvolvement';
 import ActivityTimeline from './components/ActivityTimeline';
@@ -42,6 +43,8 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [ministriesCount, setMinistriesCount] = useState(0);
   const [memberStats, setMemberStats] = useState({ attendanceRate: 0, totalGiving: 0 });
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Always load profile when component mounts
@@ -118,8 +121,9 @@ export default function ProfilePage() {
       try {
         const memberMinistries = await fetchMemberMinistries(user.id);
         setMinistriesCount(memberMinistries.length);
-      } catch {
+      } catch (err) {
         // fallback: count stays 0
+        console.warn('Could not load member ministries:', err);
       }
 
       // Fetch member stats from members table if linked
@@ -197,7 +201,7 @@ export default function ProfilePage() {
           country: formData.country,
           avatar_url: formData.avatar_url,
           bio: formData.bio,
-          date_of_birth: formData.date_of_birth,
+          date_of_birth: formData.date_of_birth || null,
           role: formData.role,
           updated_at: new Date().toISOString(),
         });
@@ -210,8 +214,9 @@ export default function ProfilePage() {
       setIsEditing(false);
       toast.success('Profile updated successfully');
     } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error('Failed to update profile');
+      console.error('Error saving profile:', JSON.stringify(error, null, 2));
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile';
+      toast.error('Failed to update profile', { description: errorMessage });
     } finally {
       setSaving(false);
     }
@@ -220,6 +225,30 @@ export default function ProfilePage() {
   const handleCancel = () => {
     setFormData(profile || {});
     setIsEditing(false);
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0]) return;
+
+    setUploadingPhoto(true);
+
+    try {
+      const file = event.target.files[0];
+      const publicUrl = await uploadMemberPhoto(file, user?.id);
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      toast.success('Photo uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast.error('Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   if (authLoading || loading) {
@@ -273,11 +302,13 @@ export default function ProfilePage() {
                     <div className="w-32 h-32 rounded-full border-4 border-white shadow-lg overflow-hidden bg-muted">
                       {profile.avatar_url ? (
                         <AppImage
+                          key={profile.avatar_url}
                           src={profile.avatar_url}
                           alt={profile.full_name}
                           width={128}
                           height={128}
                           className="w-full h-full object-cover"
+                          unoptimized={true}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-primary/10">
@@ -286,10 +317,25 @@ export default function ProfilePage() {
                       )}
                     </div>
                     {isEditing && (
-                      <button className="absolute bottom-0 right-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
-                        <Camera size={18} className="text-white" />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingPhoto}
+                        className="absolute bottom-0 right-0 w-10 h-10 bg-primary rounded-full flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      >
+                        {uploadingPhoto ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Camera size={18} className="text-white" />
+                        )}
                       </button>
                     )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
                   </div>
 
                   {/* Name and Role */}
