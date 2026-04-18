@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const useSupabaseAuth = process.env.NEXT_PUBLIC_USE_SUPABASE_AUTH === 'true';
+  const useSupabaseAuth = process.env.NEXT_PUBLIC_USE_SUPABASE_AUTH !== 'false';
   const supabase = useSupabaseAuth ? createClient() : null;
 
   useEffect(() => {
