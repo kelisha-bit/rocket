@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import AppLogo from '@/components/ui/AppLogo';
-import { LayoutDashboard, Users, CalendarDays, HandCoins, Home, ChevronLeft, ChevronRight, Settings, LogOut, BookOpen, UsersRound, FileText, UserCheck, User } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarDays, HandCoins, Home, ChevronLeft, ChevronRight, Settings, LogOut, BookOpen, UsersRound, FileText, UserCheck, User, Award } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -29,6 +29,7 @@ export default function Sidebar({ currentPath = '' }: SidebarProps) {
     { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, group: 'main' },
     { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, group: 'main' },
     { id: 'nav-member-attendance', label: 'Member Check-in', href: '/member-attendance', icon: <UserCheck size={20} />, group: 'main' },
+    { id: 'nav-certificates', label: 'Certificates', href: '/certificates', icon: <Award size={20} />, group: 'main' },
     { id: 'nav-reports', label: 'Reports', href: '/reports', icon: <FileText size={20} />, group: 'main' },
     { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, group: 'ministry' },
     { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, group: 'ministry' },
