@@ -2,8 +2,9 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session, User, AuthError } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 
 const AuthContext = createContext<any>({});
 
@@ -20,12 +21,40 @@ export const useAuth = () => {
   return context;
 };
 
+// Helper to check if error is refresh token related
+const isRefreshTokenError = (error: any): boolean => {
+  if (!error) return false;
+  const message = error.message || error.error?.message || '';
+  return (
+    message.includes('Invalid Refresh Token') ||
+    message.includes('Refresh Token Not Found') ||
+    message.includes('token is invalid') ||
+    message.includes('session_not_found') ||
+    error.status === 400 && message.includes('refresh')
+  );
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const useSupabaseAuth = process.env.NEXT_PUBLIC_USE_SUPABASE_AUTH !== 'false';
   const supabase = useSupabaseAuth ? createClient() : null;
+
+  // Handle sign out with cleanup
+  const handleSignOut = async (redirect = true) => {
+    if (!supabase) return;
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      // Ignore sign out errors
+    }
+    setUser(null);
+    setSession(null);
+    if (redirect && typeof window !== 'undefined') {
+      window.location.href = '/sign-up-login-screen';
+    }
+  };
 
   useEffect(() => {
     if (!useSupabaseAuth || !supabase) {
@@ -34,17 +63,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
       return;
     }
-    // Get initial session
-    supabase.auth.getSession().then((result: { data: { session: Session | null } }) => {
-      setSession(result.data.session);
-      setUser(result.data.session?.user ?? null);
+
+    // Get initial session with error handling
+    supabase.auth.getSession().then((result: { data: { session: Session | null }; error: AuthError | null }) => {
+      if (result.error && isRefreshTokenError(result.error)) {
+        console.warn('Invalid refresh token detected, clearing session');
+        handleSignOut(false);
+        toast.error('Session expired', { description: 'Please sign in again.' });
+      } else {
+        setSession(result.data.session);
+        setUser(result.data.session?.user ?? null);
+      }
+      setLoading(false);
+    }).catch((error) => {
+      console.error('Error getting session:', error);
+      if (isRefreshTokenError(error)) {
+        handleSignOut(false);
+        toast.error('Session expired', { description: 'Please sign in again.' });
+      }
       setLoading(false);
     });
 
     // Listen for auth changes
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((_event: string, session: Session | null) => {
+    } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
+      // Handle specific events
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed successfully');
+      }
+      if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
+      }
+      
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -87,12 +138,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Sign Out
-  const signOut = async () => {
+  const signOut = async (scope: 'local' | 'global' | 'others' = 'local') => {
     if (!useSupabaseAuth || !supabase) {
       return;
     }
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    try {
+      const { error } = await supabase.auth.signOut({ scope });
+      if (error && !isRefreshTokenError(error)) {
+        throw error;
+      }
+    } catch (error) {
+      if (isRefreshTokenError(error)) {
+        // Token already invalid, just clear local state
+        console.warn('Token invalid during sign out, clearing local state');
+      } else {
+        throw error;
+      }
+    } finally {
+      // Always clear local state
+      setUser(null);
+      setSession(null);
+    }
   };
 
   // Get Current User
@@ -135,7 +201,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     getCurrentUser,
     isEmailVerified,
-    getUserProfile
+    getUserProfile,
+    handleSignOut
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
