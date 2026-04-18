@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface FormValues {
@@ -19,8 +18,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [signedUp, setSignedUp] = useState(false);
-  const router = useRouter();
-  const { signUp, useSupabaseAuth } = useAuth();
+  const { signUp } = useAuth();
 
   const {
     register,
@@ -35,27 +33,11 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
     try {
-      if (useSupabaseAuth) {
-        await signUp(data.email, data.password, { fullName: data.fullName });
-        setSignedUp(true);
-        toast.success('Account created!', {
-          description: 'Check your email to confirm your account, then sign in.',
-        });
-        return;
-      }
-
-      // Demo mode — store credentials in localStorage
-      const existingUsers = JSON.parse(localStorage.getItem('gw_demo_users') || '[]');
-      if (existingUsers.some((u: { email: string }) => u.email === data.email)) {
-        setError('email', { message: 'An account with this email already exists' });
-        return;
-      }
-      existingUsers.push({ fullName: data.fullName, email: data.email, password: data.password });
-      localStorage.setItem('gw_demo_users', JSON.stringify(existingUsers));
-      toast.success('Account created', {
-        description: 'You can now sign in with your credentials.',
+      await signUp(data.email, data.password, { fullName: data.fullName });
+      setSignedUp(true);
+      toast.success('Account created!', {
+        description: 'Check your email to confirm your account, then sign in.',
       });
-      onSwitchToSignIn();
     } catch (e: any) {
       const msg: string = e?.message || 'Sign up failed';
       if (msg.toLowerCase().includes('email')) {

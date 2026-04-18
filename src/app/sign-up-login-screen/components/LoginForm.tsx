@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,14 +8,6 @@ import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Backend integration point: replace with real auth API call
-const DEMO_CREDENTIALS = [
-  { role: 'Pastor / Admin', email: 'pastor@greaterworks.gh', password: 'GW@Pastor2026', description: 'Full access to all modules' },
-  { role: 'Finance Officer', email: 'finance@greaterworks.gh', password: 'GW@Finance2026', description: 'Finance & giving records only' },
-  { role: 'Events Coordinator', email: 'events@greaterworks.gh', password: 'GW@Events2026', description: 'Events & programs management' },
-  { role: 'Cell Group Leader', email: 'cellgroup@greaterworks.gh', password: 'GW@CellGroup2026', description: 'Cell group & member view' },
-];
 
 interface FormValues {
   email: string;
@@ -33,12 +25,16 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/dashboard';
-  const { signIn, useSupabaseAuth } = useAuth();
+  const { signIn } = useAuth();
+
+  // Remove any lingering demo user data from localStorage
+  useEffect(() => {
+    localStorage.removeItem('gw_demo_users');
+  }, []);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
     setError,
   } = useForm<FormValues>({ defaultValues: { rememberMe: false } });
@@ -46,47 +42,14 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
     try {
-      if (useSupabaseAuth) {
-        await signIn(data.email, data.password);
-        toast.success('Welcome back', { description: 'Redirecting to your dashboard…' });
-        router.push(redirectTo);
-        return;
-      }
-
-      // Demo auth — check hardcoded credentials + localStorage sign-ups
-      await new Promise(r => setTimeout(r, 1200));
-      const match = DEMO_CREDENTIALS.find(
-        c => c.email === data.email && c.password === data.password
-      );
-      const demoUsers = JSON.parse(localStorage.getItem('gw_demo_users') || '[]');
-      const demoMatch = demoUsers.find(
-        (u: { email: string; password: string; fullName: string }) => u.email === data.email && u.password === data.password
-      );
-
-      if (match) {
-        toast.success(`Welcome back, ${match.role}`, {
-          description: 'Redirecting to your dashboard…',
-        });
-        setTimeout(() => router.push(redirectTo), 800);
-      } else if (demoMatch) {
-        toast.success(`Welcome back, ${demoMatch.fullName}`, {
-          description: 'Redirecting to your dashboard…',
-        });
-        setTimeout(() => router.push(redirectTo), 800);
-      } else {
-        setError('email', { message: 'Invalid credentials — use the demo accounts below or sign up for a new account' });
-      }
+      await signIn(data.email, data.password);
+      toast.success('Welcome back', { description: 'Redirecting to your dashboard…' });
+      router.push(redirectTo);
     } catch (e: any) {
       setError('email', { message: e?.message || 'Sign in failed' });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const autofill = (cred: typeof DEMO_CREDENTIALS[0]) => {
-    setValue('email', cred.email, { shouldValidate: true });
-    setValue('password', cred.password, { shouldValidate: true });
-    toast.info(`${cred.role} credentials loaded`);
   };
 
   return (
@@ -203,37 +166,6 @@ export default function LoginForm({ onSwitchToSignUp }: LoginFormProps) {
           )}
         </button>
       </form>
-
-      {/* Demo credentials */}
-      <div className="mt-8 rounded-xl border border-border bg-muted/40 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border bg-muted/60 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500" />
-          <span className="text-xs font-semibold text-foreground">Demo Accounts — click any row to autofill</span>
-        </div>
-        <div className="divide-y divide-border">
-          {DEMO_CREDENTIALS.map(cred => (
-            <button
-              key={`cred-${cred.role}`}
-              type="button"
-              onClick={() => autofill(cred)}
-              className="w-full text-left px-4 py-3 hover:bg-white transition-colors group"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-[13px] font-semibold text-foreground group-hover:text-primary transition-colors">
-                    {cred.role}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground font-mono">{cred.email}</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-0.5">{cred.description}</p>
-                </div>
-                <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium shrink-0">
-                  Use →
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
 
       <p className="text-center text-sm text-muted-foreground mt-6">
         Don&apos;t have an account?{' '}
