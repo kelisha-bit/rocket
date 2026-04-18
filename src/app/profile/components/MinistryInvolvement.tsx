@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 
 interface MinistryInvolvementProps {
   userId?: string;
+  memberId?: string;
 }
 
-export default function MinistryInvolvement({ userId }: MinistryInvolvementProps) {
+export default function MinistryInvolvement({ userId, memberId }: MinistryInvolvementProps) {
   const [ministries, setMinistries] = useState<DBMinistry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -100,7 +101,7 @@ export default function MinistryInvolvement({ userId }: MinistryInvolvementProps
       {/* Join Ministry Modal */}
       {showJoinModal && (
         <JoinMinistryModal
-          userId={userId}
+          memberId={memberId}
           currentMinistries={ministries}
           onClose={() => setShowJoinModal(false)}
           onJoined={() => {
@@ -118,13 +119,13 @@ export default function MinistryInvolvement({ userId }: MinistryInvolvementProps
 
 // Join Ministry Modal Component
 interface JoinMinistryModalProps {
-  userId?: string;
+  memberId?: string;
   currentMinistries: DBMinistry[];
   onClose: () => void;
   onJoined: () => void;
 }
 
-function JoinMinistryModal({ userId, currentMinistries, onClose, onJoined }: JoinMinistryModalProps) {
+function JoinMinistryModal({ memberId, currentMinistries, onClose, onJoined }: JoinMinistryModalProps) {
   const [availableMinistries, setAvailableMinistries] = useState<DBMinistry[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState<string | null>(null);
@@ -148,29 +149,37 @@ function JoinMinistryModal({ userId, currentMinistries, onClose, onJoined }: Joi
   }, [currentMinistries]);
 
   const handleJoin = async (ministryId: string) => {
-    if (!userId) {
-      toast.error('Please sign in to join a ministry');
+    if (!memberId) {
+      toast.error('Member profile not linked. Please contact admin.');
       return;
     }
 
     setJoining(ministryId);
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('member_ministries')
+      
+      // Use type assertion to bypass TypeScript issues with generated types
+      const { data, error } = await supabase
+        .from('member_ministries' as any)
         .insert({
-          member_id: userId,
+          member_id: memberId,
           ministry_id: ministryId,
           joined_at: new Date().toISOString(),
-        });
+        } as any)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', JSON.stringify(error, null, 2));
+        throw new Error(error.message || 'Database error');
+      }
 
+      console.log('Successfully joined ministry:', data);
       toast.success('Successfully joined ministry!');
       onJoined();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error joining ministry:', err);
-      toast.error('Failed to join ministry');
+      const errorMessage = err?.message || err?.error_description || 'Failed to join ministry. Please try again.';
+      toast.error('Failed to join ministry', { description: errorMessage });
     } finally {
       setJoining(null);
     }

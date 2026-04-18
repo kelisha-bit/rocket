@@ -586,7 +586,7 @@ export default function ProfilePage() {
 
           {/* Right Column - Additional Info */}
           <div className="space-y-6">
-            <MinistryInvolvement userId={profile.id} />
+            <MinistryInvolvement userId={profile.id} memberId={profile.member_id} />
             <ActivityTimeline userId={profile.id} memberId={profile.member_id} />
             <QuickActions
               onSignOut={async () => {
