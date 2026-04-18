@@ -11,7 +11,11 @@ import {
   X,
   Home,
   UsersRound,
-  Settings
+  Settings,
+  UserCheck,
+  Award,
+  User,
+  FileText
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDashboard } from '../context/DashboardContext';
@@ -29,10 +33,14 @@ export default function MobileDashboardNav({ currentPath = '' }: MobileDashboard
     { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} />, badge: null },
     { id: 'nav-members', label: 'Members', href: '/member-management', icon: <Users size={20} />, badge: loading ? null : stats.newMembersThisMonth > 0 ? stats.newMembersThisMonth : null },
     { id: 'nav-attendance', label: 'Attendance', href: '/attendance', icon: <BookOpen size={20} />, badge: null },
+    { id: 'nav-member-attendance', label: 'Member Check-in', href: '/member-attendance', icon: <UserCheck size={20} />, badge: null },
+    { id: 'nav-certificates', label: 'Certificates', href: '/certificates', icon: <Award size={20} />, badge: null },
+    { id: 'nav-reports', label: 'Reports', href: '/reports', icon: <FileText size={20} />, badge: null },
     { id: 'nav-finance', label: 'Finance', href: '/finance', icon: <HandCoins size={20} />, badge: null },
     { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, badge: loading ? null : data.upcomingEvents.length > 0 ? data.upcomingEvents.length : null },
     { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, badge: null },
     { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, badge: null },
+    { id: 'nav-profile', label: 'My Profile', href: '/profile', icon: <User size={20} />, badge: null },
     { id: 'nav-settings', label: 'Settings', href: '/settings', icon: <Settings size={20} />, badge: null },
   ];
 
