@@ -305,26 +305,39 @@ export async function bulkUpsertMemberAttendance(
 ): Promise<void> {
   if (records.length === 0) return;
 
-  // All records share the same date+service
-  const { date, service } = records[0];
-  const session = await findOrCreateSession(date, service);
-  const supabase = createClient();
+  try {
+    // All records share the same date+service
+    const { date, service } = records[0];
+    const session = await findOrCreateSession(date, service);
+    const supabase = createClient();
 
-  const rows = records.map(r => ({
-    session_id: session.id,
-    member_id: r.member_id,
-    present: r.present,
-    notes: r.notes ?? null,
-    checked_in_at: r.present ? new Date().toISOString() : null,
-  }));
+    const rows = records.map(r => ({
+      session_id: session.id,
+      member_id: r.member_id,
+      present: r.present,
+      notes: r.notes ?? null,
+      checked_in_at: r.present ? new Date().toISOString() : null,
+    }));
 
-  const { error } = await supabase
-    .from('attendance_records')
-    .upsert(rows, { onConflict: 'session_id,member_id' });
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .upsert(rows, { onConflict: 'session_id,member_id' });
 
-  if (error) {
-    console.error('Error bulk upserting member attendance:', error);
-    throw error;
+    if (error) {
+      console.error('Supabase upsert error:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      });
+      throw new Error(`Database error: ${error.message || error.code || JSON.stringify(error)}`);
+    }
+  } catch (err) {
+    console.error('bulkUpsertMemberAttendance caught error:', err);
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error(`Unknown error: ${JSON.stringify(err)}`);
   }
 }
 

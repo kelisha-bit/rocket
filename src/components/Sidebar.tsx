@@ -35,6 +35,10 @@ export default function Sidebar({ currentPath = '' }: SidebarProps) {
     { id: 'nav-events', label: 'Events', href: '/events', icon: <CalendarDays size={20} />, group: 'ministry' },
     { id: 'nav-cellgroups', label: 'Cell Groups', href: '/cell-groups', icon: <Home size={20} />, group: 'ministry' },
     { id: 'nav-ministries', label: 'Ministries', href: '/ministries', icon: <UsersRound size={20} />, group: 'ministry' },
+    { id: 'nav-men-ministry', label: 'Men Ministry', href: '/ministries/men', icon: <Users size={20} />, group: 'ministry' },
+    { id: 'nav-women-ministry', label: 'Women Ministry', href: '/ministries/women', icon: <Users size={20} />, group: 'ministry' },
+    { id: 'nav-youth-ministry', label: 'Youth Ministry', href: '/ministries/youth', icon: <Users size={20} />, group: 'ministry' },
+    { id: 'nav-music-ministry', label: 'Music Ministry', href: '/ministries/music', icon: <Users size={20} />, group: 'ministry' },
     { id: 'nav-profile', label: 'My Profile', href: '/profile', icon: <User size={20} />, group: 'ministry' },
   ];
 

@@ -11,10 +11,17 @@ import {
   User,
   Filter,
   Search,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchReports, downloadReport, shareReport, ReportData } from '@/lib/report-adapter';
+import { 
+  fetchGeneratedReports, 
+  deleteGeneratedReport, 
+  downloadReport,
+  GeneratedReport,
+  ReportFormat
+} from '@/lib/reports-adapter';
 
 const statusColors = {
   'Completed': 'bg-green-50 text-green-700 border-green-200',
@@ -22,20 +29,21 @@ const statusColors = {
   'Failed': 'bg-red-50 text-red-700 border-red-200'
 };
 
-const formatColors = {
+const formatColors: Record<ReportFormat | string, string> = {
   'PDF': 'bg-red-50 text-red-700',
   'Excel': 'bg-green-50 text-green-700',
+  'CSV': 'bg-blue-50 text-blue-700',
   'PowerPoint': 'bg-orange-50 text-orange-700',
-  'Word': 'bg-blue-50 text-blue-700',
-  'TXT': 'bg-gray-50 text-gray-700'
+  'Word': 'bg-blue-50 text-blue-700'
 };
 
 export default function RecentReports() {
-  const [reports, setReports] = useState<ReportData[]>([]);
+  const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadReports();
@@ -44,10 +52,10 @@ export default function RecentReports() {
   const loadReports = async () => {
     try {
       setLoading(true);
-      const reportsData = await fetchReports();
-      setReports(reportsData);
+      const data = await fetchGeneratedReports();
+      setReports(data);
     } catch (error) {
-      console.error('Error loading reports:', error);
+      console.error('Failed to load reports:', error);
       toast.error('Failed to load reports');
     } finally {
       setLoading(false);
@@ -62,106 +70,96 @@ export default function RecentReports() {
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  const handleDownload = (report: ReportData) => {
+  const handleDownload = async (report: GeneratedReport) => {
+    if (report.status !== 'Completed') {
+      toast.error('Report not ready', { description: 'Please wait for the report to complete processing.' });
+      return;
+    }
+
     try {
+      setDownloadingId(report.id);
       downloadReport(report);
-      // Update download count
-      setReports(prev => prev.map(r => 
-        r.id === report.id ? { ...r, downloads: r.downloads + 1 } : r
-      ));
+      
+      // Refresh to get updated download count
+      await loadReports();
+      
       toast.success('Download Started', { 
         description: `Downloading ${report.title}...` 
       });
     } catch (error) {
-      toast.error('Download Failed', { 
-        description: 'Failed to download report' 
-      });
+      console.error('Download failed:', error);
+      toast.error('Download failed');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
-  const handleView = (report: ReportData) => {
-    const reportWindow = window.open('', '_blank');
-    if (reportWindow) {
-      reportWindow.document.write(`
-        <html>
-          <head>
-            <title>${report.title}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; }
-              .header { border-bottom: 2px solid #1B4F8A; padding-bottom: 15px; margin-bottom: 25px; }
-              .section { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; }
-              .metric { display: inline-block; margin: 10px 15px 10px 0; }
-              .metric-value { font-size: 24px; font-weight: bold; color: #1B4F8A; display: block; }
-              .metric-label { font-size: 12px; color: #666; text-transform: uppercase; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>${report.title}</h1>
-              <p>${report.description || report.type}</p>
-              <small>Generated: ${new Date(report.generatedAt).toLocaleString()} by ${report.generatedBy}</small>
-            </div>
-            
-            <div class="section">
-              <h2>Report Data</h2>
-              ${Object.entries(report.data).map(([key, value]) => `
-                <div class="metric">
-                  <span class="metric-value">${typeof value === 'number' ? value.toLocaleString() : value}</span>
-                  <span class="metric-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
-                </div>
-              `).join('')}
-            </div>
-            
-            <div class="section">
-              <h2>Report Information</h2>
-              <p><strong>Status:</strong> ${report.status}</p>
-              <p><strong>Format:</strong> ${report.format}</p>
-              <p><strong>Size:</strong> ${report.size}</p>
-              <p><strong>Downloads:</strong> ${report.downloads}</p>
-              <p><strong>Shared:</strong> ${report.shared ? 'Yes' : 'No'}</p>
-            </div>
-          </body>
-        </html>
-      `);
-      reportWindow.document.close();
+  const handleView = (report: GeneratedReport) => {
+    if (report.status !== 'Completed') {
+      toast.info('Report processing', { description: 'This report is still being generated.' });
+      return;
+    }
+
+    if (report.data) {
+      // Open data in a new window as JSON
+      const dataStr = JSON.stringify(report.data, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      toast.info('Opening Report', { description: `Viewing ${report.title} data...` });
+    } else {
+      toast.info('No data available', { description: 'This report has no viewable data.' });
     }
   };
 
-  const handleShare = (report: ReportData) => {
+  const handleShare = async (report: GeneratedReport) => {
     try {
-      const shareUrl = shareReport(report);
-      setReports(prev => prev.map(r => 
-        r.id === report.id ? { ...r, shared: true } : r
-      ));
+      const shareData = {
+        title: report.title,
+        type: report.type,
+        generatedAt: report.generatedAt,
+        format: report.format,
+      };
+      
+      await navigator.clipboard.writeText(JSON.stringify(shareData, null, 2));
+      
       toast.success('Report Shared', { 
-        description: 'Share link copied to clipboard' 
+        description: `Report details copied to clipboard` 
       });
     } catch (error) {
-      toast.error('Share Failed', { 
-        description: 'Failed to share report' 
-      });
+      toast.error('Failed to copy to clipboard');
     }
   };
 
-  const handleDelete = (report: ReportData) => {
-    if (confirm(`Are you sure you want to delete "${report.title}"?`)) {
-      setReports(prev => prev.filter(r => r.id !== report.id));
+  const handleDelete = async (report: GeneratedReport) => {
+    if (!window.confirm(`Are you sure you want to delete "${report.title}"?`)) {
+      return;
+    }
+
+    try {
+      await deleteGeneratedReport(report.id);
+      await loadReports();
       toast.success('Report Deleted', { 
         description: `${report.title} has been deleted` 
       });
+    } catch (error) {
+      console.error('Delete failed:', error);
+      toast.error('Failed to delete report');
     }
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-xl border border-border shadow-card p-6">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 size={32} className="animate-spin text-primary" />
-          <span className="ml-3 text-muted-foreground">Loading reports...</span>
-        </div>
-      </div>
-    );
-  }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <div className="bg-white rounded-xl border border-border shadow-card p-6">
@@ -169,11 +167,20 @@ export default function RecentReports() {
         <div>
           <h2 className="text-lg font-semibold text-foreground">Recent Reports</h2>
           <p className="text-sm text-muted-foreground">
-            {filteredReports.length} reports · {filteredReports.reduce((sum, r) => sum + r.downloads, 0)} total downloads
+            {loading ? 'Loading...' : `${filteredReports.length} reports · ${filteredReports.reduce((sum, r) => sum + r.downloads, 0)} total downloads`}
           </p>
         </div>
         
         <div className="flex items-center gap-2">
+          <button
+            onClick={loadReports}
+            disabled={loading}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            title="Refresh"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             <input
@@ -208,7 +215,6 @@ export default function RecentReports() {
             <option>Attendance</option>
             <option>Ministry</option>
             <option>Events</option>
-            <option>Generated</option>
           </select>
         </div>
       </div>
@@ -274,7 +280,7 @@ export default function RecentReports() {
                 <td className="py-3 px-2">
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Clock size={12} />
-                    <span>{new Date(report.generatedAt).toLocaleDateString()}</span>
+                    <span>{formatDate(report.generatedAt)}</span>
                   </div>
                 </td>
                 <td className="py-3 px-2">

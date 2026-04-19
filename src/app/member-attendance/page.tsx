@@ -232,8 +232,10 @@ export default function MemberAttendancePage() {
       toast.success('Session saved', { description: `${presentCount} of ${records.length} members marked present` });
       // Refresh summaries in background
       loadSummaries();
-    } catch {
-      toast.error('Failed to save session attendance');
+    } catch (err) {
+      console.error('Failed to save session attendance:', err);
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      toast.error('Failed to save session attendance', { description: message });
     } finally {
       setSavingSession(false);
     }
