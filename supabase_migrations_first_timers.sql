@@ -57,33 +57,11 @@ CREATE POLICY "Allow authenticated insert first_timers"
   TO authenticated
   WITH CHECK (true);
 
-CREATE POLICY "Allow admin/pastor update first_timers"
+CREATE POLICY "Allow authenticated update first_timers"
   ON first_timers FOR UPDATE
   TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM user_profiles up
-      WHERE up.id = auth.uid()
-        AND (
-          up.role ILIKE '%admin%'
-          OR up.role ILIKE '%pastor%'
-          OR up.role ILIKE '%administrator%'
-        )
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1
-      FROM user_profiles up
-      WHERE up.id = auth.uid()
-        AND (
-          up.role ILIKE '%admin%'
-          OR up.role ILIKE '%pastor%'
-          OR up.role ILIKE '%administrator%'
-        )
-    )
-  );
+  USING (true)
+  WITH CHECK (true);
 
 CREATE POLICY "Allow admin/pastor delete first_timers"
   ON first_timers FOR DELETE
