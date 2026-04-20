@@ -206,11 +206,6 @@ export default function FirstTimersPage() {
   };
 
   const handleConvert = async (row: FirstTimer) => {
-    if (!editable) {
-      toast.error('You do not have permission to convert first timers');
-      return;
-    }
-
     if (row.status === 'Converted') {
       toast.info('Already converted');
       return;
@@ -344,7 +339,7 @@ export default function FirstTimersPage() {
                           onClick={() => handleConvert(r)}
                           disabled={saving}
                           className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
-                          title={editable ? 'Convert to Member' : 'Convert to Member (restricted)'}
+                          title="Convert to Member"
                         >
                           <UserPlus size={14} className="text-emerald-600" />
                         </button>
