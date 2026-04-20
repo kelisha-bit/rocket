@@ -87,6 +87,7 @@ export default function FirstTimersPage() {
   };
 
   const editable = canEdit(profile?.role);
+  const readOnly = !!editing && !editable;
 
   const eventTitleById = useMemo(() => {
     const map = new Map<string, string>();
@@ -334,25 +335,23 @@ export default function FirstTimersPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(r)}
-                          disabled={!editable}
-                          className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                          title={editable ? 'Edit' : 'Editing restricted'}
+                          className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                          title={editable ? 'Edit' : 'View (editing restricted)'}
                         >
                           <Pencil size={14} className="text-blue-600" />
                         </button>
                         <button
                           onClick={() => handleConvert(r)}
-                          disabled={!editable || saving}
+                          disabled={saving}
                           className="p-1.5 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
-                          title={editable ? 'Convert to Member' : 'Conversion restricted'}
+                          title={editable ? 'Convert to Member' : 'Convert to Member (restricted)'}
                         >
                           <UserPlus size={14} className="text-emerald-600" />
                         </button>
                         <button
                           onClick={() => handleDelete(r)}
-                          disabled={!editable}
-                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                          title={editable ? 'Delete' : 'Delete restricted'}
+                          className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title={editable ? 'Delete' : 'Delete (restricted)'}
                         >
                           <Trash2 size={14} className="text-red-600" />
                         </button>
@@ -390,6 +389,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.full_name ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, full_name: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -399,6 +399,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.phone ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, phone: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -408,6 +409,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.email ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -417,6 +419,7 @@ export default function FirstTimersPage() {
             <select
               value={String(form.gender ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, gender: (e.target.value || null) as any }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">—</option>
@@ -430,6 +433,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.address ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, address: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -439,6 +443,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.preferred_contact_method ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, preferred_contact_method: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Call, WhatsApp, Email..."
             />
@@ -450,6 +455,7 @@ export default function FirstTimersPage() {
               type="date"
               value={String(form.first_visit_date ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, first_visit_date: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -459,6 +465,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.service_type ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, service_type: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Sunday Service, Midweek..."
             />
@@ -469,6 +476,7 @@ export default function FirstTimersPage() {
             <select
               value={String(form.event_id ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, event_id: e.target.value || null }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">—</option>
@@ -483,6 +491,7 @@ export default function FirstTimersPage() {
             <input
               value={String(form.invited_by_name ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, invited_by_name: e.target.value }))}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
               placeholder="Name"
             />
@@ -494,7 +503,7 @@ export default function FirstTimersPage() {
               value={String(form.status ?? 'New')}
               onChange={(e) => setForm(prev => ({ ...prev, status: e.target.value as any }))}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
-              disabled={!!editing && !editable}
+              disabled={readOnly}
             >
               {STATUS_OPTIONS.map(s => (
                 <option key={s} value={s}>{s}</option>
@@ -508,6 +517,7 @@ export default function FirstTimersPage() {
               value={String(form.notes ?? '')}
               onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
               rows={3}
+              disabled={readOnly}
               className="w-full text-sm border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
