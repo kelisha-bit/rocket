@@ -10,7 +10,8 @@ import {
   BarChart3,
   TrendingUp,
   Users,
-  Loader2
+  Loader2,
+  UserPlus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -130,6 +131,14 @@ export default function ReportsHeader() {
         >
           <Download size={14} />
           Bulk Export
+        </button>
+
+        <button
+          onClick={() => router.push('/reports/first-timers')}
+          className="flex items-center gap-2 bg-white border border-border text-sm font-medium rounded-lg px-3 py-2 hover:bg-muted transition-colors shadow-card"
+        >
+          <UserPlus size={14} />
+          First Timers
         </button>
         
         <button

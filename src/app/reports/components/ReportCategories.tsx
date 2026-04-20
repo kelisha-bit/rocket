@@ -47,6 +47,7 @@ const borderColorMap: Record<string, string> = {
 const routeMap: Record<string, string> = {
   'financial': '/finance',
   'membership': '/member-management',
+  'first-timers': '/reports/first-timers',
   'attendance': '/attendance',
   'events': '/events',
   'cellgroups': '/cell-groups',
