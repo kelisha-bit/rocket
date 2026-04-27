@@ -183,7 +183,18 @@ export async function createMember(memberData: Partial<Member>): Promise<Member>
 
   if (error) {
     console.error('Error creating member:', error);
-    throw error;
+    const message =
+      (error as any)?.message ||
+      (error as any)?.details ||
+      (error as any)?.hint ||
+      (() => {
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
+    throw new Error(`Error creating member: ${message}`);
   }
 
   return transformMember(data);
@@ -227,7 +238,18 @@ export async function updateMember(id: string, memberData: Partial<Member>): Pro
 
   if (error) {
     console.error('Error updating member:', error);
-    throw error;
+    const message =
+      (error as any)?.message ||
+      (error as any)?.details ||
+      (error as any)?.hint ||
+      (() => {
+        try {
+          return JSON.stringify(error);
+        } catch {
+          return String(error);
+        }
+      })();
+    throw new Error(`Error updating member: ${message}`);
   }
 
   return transformMember(data);
