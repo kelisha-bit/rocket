@@ -152,7 +152,7 @@ export async function createMember(memberData: Partial<Member>): Promise<Member>
   
   // Prepare data for database (remove frontend-only fields)
   const dbData = {
-    member_code: memberData.member_code,
+    member_code: (memberData.member_code ?? '').trim(),
     full_name: memberData.full_name,
     photo_url: memberData.photo_url,
     photo_alt: memberData.photo_alt,
@@ -175,9 +175,11 @@ export async function createMember(memberData: Partial<Member>): Promise<Member>
     primary_ministry_id: memberData.primary_ministry_id,
   };
 
-  const { data, error } = await supabase
+  if (!dbData.member_code) dbData.member_code = '';
+
+  const { data, error } = await (supabase as any)
     .from('members')
-    .insert(dbData)
+    .insert(dbData as any)
     .select()
     .single();
 
@@ -229,9 +231,9 @@ export async function updateMember(id: string, memberData: Partial<Member>): Pro
     primary_ministry_id: memberData.primary_ministry_id,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('members')
-    .update(dbData)
+    .update(dbData as any)
     .eq('id', id)
     .select()
     .single();
