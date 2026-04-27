@@ -48,6 +48,12 @@ export default function FinancePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'income' | 'expense' | 'summary'>('all');
 
+  const sortedMemberList = useMemo(() => {
+    return [...memberList].sort((a, b) =>
+      (a.name ?? '').localeCompare((b.name ?? ''), undefined, { sensitivity: 'base' }),
+    );
+  }, [memberList]);
+
   // Fetch members from database
   useEffect(() => {
     const loadMembers = async () => {
@@ -1008,7 +1014,7 @@ export default function FinancePage() {
                         {loadingMembers ? (
                           <option value="">Loading members...</option>
                         ) : (
-                          memberList.map(member => (
+                          sortedMemberList.map(member => (
                             <option key={member.id} value={member.name}>
                               {member.name} ({member.memberId})
                             </option>
